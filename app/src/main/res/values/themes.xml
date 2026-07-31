@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.InterviewHelper" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Android 12+ 启动屏（System SplashScreen），随后切换到实际主题 -->
+    <style name="Theme.InterviewHelper.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.InterviewHelper</item>
+    </style>
 </resources>
