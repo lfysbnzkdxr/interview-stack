@@ -109,25 +109,25 @@ class QuestionRepositoryTest {
     @Test
     fun `组合筛选时选择正确的 DAO 分页查询`() = runTest {
         val pagingSource = mockk<PagingSource<Int, QuestionEntity>>(relaxed = true)
-        every { dao.getPagedByAll(any(), any(), any()) } returns pagingSource
+        every { dao.getPagedByAll(any(), any(), any(), any()) } returns pagingSource
         coEvery { pagingSource.load(any()) } returns
             PagingSource.LoadResult.Page(data = listOf(sampleQuestion()), prevKey = null, nextKey = null)
 
         repository.getPagedQuestions(category = "Agent", difficulty = "高级", query = "RAG").first()
 
-        verify { dao.getPagedByAll("Agent", "高级", "RAG") }
+        verify { dao.getPagedByAll("Agent", "高级", "RAG", false) }
     }
 
     @Test
     fun `仅分类筛选时选择对应的 DAO 分页查询`() = runTest {
         val pagingSource = mockk<PagingSource<Int, QuestionEntity>>(relaxed = true)
-        every { dao.getPagedByCategory(any()) } returns pagingSource
+        every { dao.getPagedByCategory(any(), any()) } returns pagingSource
         coEvery { pagingSource.load(any()) } returns
             PagingSource.LoadResult.Page(data = listOf(sampleQuestion()), prevKey = null, nextKey = null)
 
         repository.getPagedQuestions(category = "Python", difficulty = null, query = null).first()
 
-        verify { dao.getPagedByCategory("Python") }
+        verify { dao.getPagedByCategory("Python", false) }
     }
 
     @Test

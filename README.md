@@ -5,7 +5,7 @@
 ## 功能特性
 
 - **卡牌练习**：翻转卡片查看问答，Fisher-Yates 洗牌 + 队列自动补充，支持按分类/难度筛选
-- **题库管理**：Paging 3 分页浏览，支持搜索、分类/难度筛选、批量删除/隐藏/移动分类
+- **题库管理**：Paging 3 分页浏览，分类 Tab 计数切换、搜索、难度筛选、「仅看可见题」开关、批量删除/隐藏/移动分类
 - **题目创建**：手动录入题目，支持 Markdown 格式答案，AI 一键生成问答
 - **AI 辅助**：接入 OpenAI 兼容接口（预设 DeepSeek、GLM、Kimi、通义千问、MiMo 五个提供商），支持问答优化、对话润色、追加子问题，含 HTTP 5xx/429 自动重试
 - **备份与恢复**：WebDAV 云端备份（自动备份 + 手动备份，保留最近 5 份）、SAF 文件导入导出（JSON，支持覆盖/合并两种模式）
@@ -56,9 +56,8 @@ GitHub Actions 在每次 push / PR 时自动运行单元测试、Lint 和 Debug 
 ```
 app/src/main/java/com/example/interviewhelper/
 ├── ui/                  # Compose UI 层（MVVM 的 View）
-│   ├── navigation/      # 底部导航（练题/浏览/创建/题库/设置）
+│   ├── navigation/      # 底部导航（练题/创建/题库/设置）
 │   ├── practice/        # 卡牌练习
-│   ├── browse/          # 题库浏览
 │   ├── create/          # 题目创建与 AI 生成
 │   ├── bank/            # 题库管理（Paging + 批量操作 + AI 润色）
 │   └── settings/        # 设置（备份/导入导出/API 配置）

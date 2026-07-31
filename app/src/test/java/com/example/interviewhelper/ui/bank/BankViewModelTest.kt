@@ -2,6 +2,7 @@ package com.example.interviewhelper.ui.bank
 
 import androidx.paging.PagingData
 import com.example.interviewhelper.MainDispatcherExtension
+import com.example.interviewhelper.data.local.CategoryCount
 import com.example.interviewhelper.data.local.QuestionEntity
 import com.example.interviewhelper.data.model.LlmResult
 import com.example.interviewhelper.data.remote.llm.LlmService
@@ -53,7 +54,8 @@ class BankViewModelTest {
     private fun stubEmptyData() {
         coEvery { settingsRepository.getCategories() } returns emptyList()
         coEvery { questionRepository.getQuestionCount() } returns flowOf(0)
-        every { questionRepository.getPagedQuestions(any(), any(), any()) } returns flowOf(PagingData.empty<QuestionEntity>())
+        coEvery { questionRepository.getCategoryCounts(any()) } returns flowOf(emptyList())
+        every { questionRepository.getPagedQuestions(any(), any(), any(), any()) } returns flowOf(PagingData.empty<QuestionEntity>())
     }
 
     private fun createViewModel() = BankViewModel(questionRepository, settingsRepository, llmService)
@@ -62,13 +64,17 @@ class BankViewModelTest {
     fun `加载时统计题目数量和分类`() = runTest(mainDispatcher.testDispatcher.scheduler) {
         coEvery { settingsRepository.getCategories() } returns listOf("Agent 智能体", "Python", "未分类")
         coEvery { questionRepository.getQuestionCount() } returns flowOf(2)
-        every { questionRepository.getPagedQuestions(any(), any(), any()) } returns flowOf(PagingData.empty<QuestionEntity>())
+        coEvery { questionRepository.getCategoryCounts(false) } returns flowOf(
+            listOf(CategoryCount("Agent 智能体", 1), CategoryCount("Python", 1))
+        )
+        every { questionRepository.getPagedQuestions(any(), any(), any(), any()) } returns flowOf(PagingData.empty<QuestionEntity>())
 
         val viewModel = createViewModel()
 
         assertFalse(viewModel.uiState.value.loading)
         assertEquals(2, viewModel.uiState.value.totalCount)
         assertEquals(listOf("Agent 智能体", "Python", "未分类"), viewModel.uiState.value.categories)
+        assertEquals(mapOf("Agent 智能体" to 1, "Python" to 1), viewModel.uiState.value.categoryCounts)
     }
 
     @Test
@@ -96,7 +102,7 @@ class BankViewModelTest {
         advanceUntilIdle()
 
         collectJob.cancel()
-        verify { questionRepository.getPagedQuestions("Agent 智能体", null, null) }
+        verify { questionRepository.getPagedQuestions("Agent 智能体", null, null, false) }
     }
 
     @Test
@@ -110,7 +116,7 @@ class BankViewModelTest {
         advanceUntilIdle()
 
         collectJob.cancel()
-        verify { questionRepository.getPagedQuestions(null, "高级", null) }
+        verify { questionRepository.getPagedQuestions(null, "高级", null, false) }
     }
 
     @Test
@@ -193,5 +199,46 @@ class BankViewModelTest {
 
         coVerify { questionRepository.updateQuestion(match { it.question == "新问题" }) }
         assertNull(viewModel.uiState.value.editId)
+    }
+
+    @Test
+    fun `切换仅看可见开关更新统计并触发可见分页`() = runTest(mainDispatcher.testDispatcher.scheduler) {
+        stubEmptyData()
+        coEvery { questionRepository.getVisibleCount() } returns flowOf(1)
+        coEvery { questionRepository.getCategoryCounts(true) } returns flowOf(
+            listOf(CategoryCount("Agent 智能体", 1))
+        )
+        val viewModel = createViewModel()
+        val collectJob = launch(mainDispatcher.testDispatcher) { viewModel.pagedQuestions.collect() }
+        advanceUntilIdle()
+
+        viewModel.setVisibleOnly(true)
+        advanceUntilIdle()
+
+        collectJob.cancel()
+        assertTrue(viewModel.uiState.value.visibleOnly)
+        assertEquals(1, viewModel.uiState.value.totalCount)
+        assertEquals(mapOf("Agent 智能体" to 1), viewModel.uiState.value.categoryCounts)
+        verify { questionRepository.getPagedQuestions(null, null, null, true) }
+    }
+
+    @Test
+    fun `关闭仅看可见开关恢复全部统计`() = runTest(mainDispatcher.testDispatcher.scheduler) {
+        stubEmptyData()
+        coEvery { questionRepository.getVisibleCount() } returns flowOf(1)
+        coEvery { questionRepository.getCategoryCounts(true) } returns flowOf(emptyList())
+        val viewModel = createViewModel()
+        val collectJob = launch(mainDispatcher.testDispatcher) { viewModel.pagedQuestions.collect() }
+        advanceUntilIdle()
+
+        viewModel.setVisibleOnly(true)
+        advanceUntilIdle()
+        viewModel.setVisibleOnly(false)
+        advanceUntilIdle()
+
+        collectJob.cancel()
+        assertFalse(viewModel.uiState.value.visibleOnly)
+        assertEquals(0, viewModel.uiState.value.totalCount)
+        verify { questionRepository.getPagedQuestions(null, null, null, false) }
     }
 }

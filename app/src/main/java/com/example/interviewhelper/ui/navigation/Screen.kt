@@ -4,11 +4,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BrowseGallery
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.AddCircleOutline
-import androidx.compose.material.icons.outlined.BrowseGallery
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -24,13 +22,6 @@ sealed class Screen(
         title = "练题",
         selectedIcon = Icons.Filled.PlayCircle,
         unselectedIcon = Icons.Outlined.PlayCircleOutline
-    )
-
-    data object Browse : Screen(
-        route = "browse",
-        title = "浏览",
-        selectedIcon = Icons.Filled.BrowseGallery,
-        unselectedIcon = Icons.Outlined.BrowseGallery
     )
 
     data object Create : Screen(
@@ -55,6 +46,6 @@ sealed class Screen(
     )
 
     companion object {
-        val bottomNavItems = listOf(Practice, Browse, Create, Bank, Settings)
+        val bottomNavItems = listOf(Practice, Create, Bank, Settings)
     }
 }
