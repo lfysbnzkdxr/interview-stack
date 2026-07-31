@@ -1,16 +1,16 @@
 package com.example.interviewhelper.data.remote.webdav
 
-import android.util.Xml
 import com.example.interviewhelper.data.model.WebDavConfig
 import com.example.interviewhelper.data.model.WebDavFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.Credentials
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
+import org.xmlpull.v1.XmlPullParserFactory
 import java.io.StringReader
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -216,7 +216,7 @@ class WebDavDataSource @Inject constructor(
     private fun parseMultiStatus(xml: String, baseUrl: String): List<WebDavFile> {
         val files = mutableListOf<WebDavFile>()
         try {
-            val parser = Xml.newPullParser()
+            val parser = XmlPullParserFactory.newInstance().newPullParser()
             parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true)
             parser.setInput(StringReader(xml))
 
