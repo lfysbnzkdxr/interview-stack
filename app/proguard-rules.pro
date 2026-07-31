@@ -25,6 +25,9 @@
 -dontwarn okhttp3.**
 -dontwarn okio.**
 
+# Tink（security-crypto 传递依赖）引用的 errorprone 编译期注解，运行时不存在
+-dontwarn com.google.errorprone.annotations.**
+
 # Room
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
