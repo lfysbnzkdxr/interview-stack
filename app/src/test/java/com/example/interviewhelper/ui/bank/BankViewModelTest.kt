@@ -52,7 +52,7 @@ class BankViewModelTest {
 
     private fun stubEmptyData() {
         coEvery { settingsRepository.getCategories() } returns emptyList()
-        coEvery { questionRepository.getAllQuestions() } returns flowOf(emptyList())
+        coEvery { questionRepository.getQuestionCount() } returns flowOf(0)
         every { questionRepository.getPagedQuestions(any(), any(), any()) } returns flowOf(PagingData.empty<QuestionEntity>())
     }
 
@@ -61,7 +61,7 @@ class BankViewModelTest {
     @Test
     fun `加载时统计题目数量和分类`() = runTest(mainDispatcher.testDispatcher.scheduler) {
         coEvery { settingsRepository.getCategories() } returns listOf("Agent 智能体", "Python", "未分类")
-        coEvery { questionRepository.getAllQuestions() } returns flowOf(listOf(question("q1"), question("q2")))
+        coEvery { questionRepository.getQuestionCount() } returns flowOf(2)
         every { questionRepository.getPagedQuestions(any(), any(), any()) } returns flowOf(PagingData.empty<QuestionEntity>())
 
         val viewModel = createViewModel()

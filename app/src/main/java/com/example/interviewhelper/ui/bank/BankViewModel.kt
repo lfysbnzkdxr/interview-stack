@@ -30,7 +30,6 @@ data class EditForm(
 data class BankUiState(
     val loading: Boolean = true,
     val loadError: String? = null,
-    val questions: List<QuestionEntity> = emptyList(),
     val categories: List<String> = emptyList(),
     val searchQuery: String = "",
     val filterCategory: String = "全部",
@@ -45,11 +44,7 @@ data class BankUiState(
     val showSubQuestion: Boolean = false,
     val subQuestionText: String = "",
     val totalCount: Int = 0
-) {
-    companion object {
-        const val PAGE_SIZE = 20
-    }
-}
+)
 
 @HiltViewModel
 class BankViewModel @Inject constructor(
@@ -89,9 +84,9 @@ class BankViewModel @Inject constructor(
             _uiState.update { it.copy(loading = true, loadError = null) }
             try {
                 val categories = settingsRepository.getCategories()
-                val questions = questionRepository.getAllQuestions().first()
+                val totalCount = questionRepository.getQuestionCount().first()
                 _uiState.update {
-                    it.copy(loading = false, categories = categories, questions = questions, totalCount = questions.size)
+                    it.copy(loading = false, categories = categories, totalCount = totalCount)
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(loading = false, loadError = "加载失败: ${e.message}") }
@@ -258,7 +253,6 @@ class BankViewModel @Inject constructor(
     }
 
     fun rejectPolish() = _uiState.update { it.copy(aiPolishResult = null) }
-    fun clearAiError() = _uiState.update { it.copy(aiError = null) }
 
     // 子问题
     fun setShowSubQuestion(show: Boolean) = _uiState.update { it.copy(showSubQuestion = show, subQuestionText = "") }

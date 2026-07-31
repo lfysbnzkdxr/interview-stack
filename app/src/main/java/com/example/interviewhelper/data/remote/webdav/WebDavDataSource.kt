@@ -59,7 +59,7 @@ class WebDavDataSource @Inject constructor(
             withContext(Dispatchers.IO) {
                 client.newCall(request).execute().use { response ->
                     when {
-                        response.isSuccessful || response.code == 207 -> Result.success(true)
+                        response.isSuccessful -> Result.success(true)
                         response.code == 401 -> Result.failure(Exception("认证失败: 用户名或密码错误 (401)"))
                         else -> Result.failure(Exception("连接失败: HTTP ${response.code}"))
                     }
@@ -87,7 +87,7 @@ class WebDavDataSource @Inject constructor(
 
             withContext(Dispatchers.IO) {
                 client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful && response.code != 207) {
+                    if (!response.isSuccessful) {
                         return@withContext Result.failure(Exception("列出文件失败: HTTP ${response.code}"))
                     }
                     val responseBody = response.body?.string() ?: return@withContext Result.failure(Exception("空响应"))
@@ -115,7 +115,7 @@ class WebDavDataSource @Inject constructor(
 
             withContext(Dispatchers.IO) {
                 client.newCall(request).execute().use { response ->
-                    if (response.isSuccessful || response.code == 201 || response.code == 204) {
+                    if (response.isSuccessful) {
                         Result.success(Unit)
                     } else {
                         Result.failure(Exception("上传失败: HTTP ${response.code}"))
@@ -170,7 +170,7 @@ class WebDavDataSource @Inject constructor(
 
             withContext(Dispatchers.IO) {
                 client.newCall(request).execute().use { response ->
-                    if (response.isSuccessful || response.code == 204) {
+                    if (response.isSuccessful) {
                         Result.success(Unit)
                     } else {
                         Result.failure(Exception("删除失败: HTTP ${response.code}"))
@@ -198,7 +198,7 @@ class WebDavDataSource @Inject constructor(
             withContext(Dispatchers.IO) {
                 client.newCall(request).execute().use { response ->
                     // 201=创建成功, 405=已存在
-                    if (response.isSuccessful || response.code == 201 || response.code == 405) {
+                    if (response.isSuccessful || response.code == 405) {
                         Result.success(Unit)
                     } else {
                         Result.failure(Exception("创建目录失败: HTTP ${response.code}"))

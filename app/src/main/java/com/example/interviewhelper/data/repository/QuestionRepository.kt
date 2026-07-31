@@ -22,18 +22,7 @@ class QuestionRepository @Inject constructor(
 
     fun getVisibleQuestions(): Flow<List<QuestionEntity>> = questionDao.getVisible()
 
-    fun getQuestionsByCategory(category: String): Flow<List<QuestionEntity>> =
-        questionDao.getByCategory(category)
-
-    fun getQuestionsByDifficulty(difficulty: String): Flow<List<QuestionEntity>> =
-        questionDao.getByDifficulty(difficulty)
-
-    fun searchQuestions(query: String): Flow<List<QuestionEntity>> =
-        questionDao.search(query)
-
     fun getQuestionCount(): Flow<Int> = questionDao.getCount()
-
-    fun getVisibleCount(): Flow<Int> = questionDao.getVisibleCount()
 
     suspend fun getQuestionById(id: String): QuestionEntity? = questionDao.getById(id)
 
@@ -56,10 +45,6 @@ class QuestionRepository @Inject constructor(
             createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis()
         )
-        questionDao.insert(entity)
-    }
-
-    suspend fun addQuestionEntity(entity: QuestionEntity) {
         questionDao.insert(entity)
     }
 

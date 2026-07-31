@@ -13,13 +13,6 @@ class BackupRepository @Inject constructor(
     private val settingsRepository: SettingsRepository
 ) {
     /**
-     * 导出数据为 JSON 字符串
-     */
-    suspend fun exportToJson(): String {
-        return settingsRepository.exportAllData()
-    }
-
-    /**
      * 将 JSON 写入 Uri（SAF 文件选择器返回的 Uri）
      */
     suspend fun exportToFile(uri: Uri): Result<Unit> {

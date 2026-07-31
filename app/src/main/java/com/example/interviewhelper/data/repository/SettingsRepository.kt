@@ -12,13 +12,10 @@ import com.example.interviewhelper.data.model.ApiConfig
 import com.example.interviewhelper.data.model.ImportMode
 import com.example.interviewhelper.data.model.WebDavConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -134,17 +131,6 @@ class SettingsRepository @Inject constructor(
             json.decodeFromString<List<String>>(jsonStr)
         } catch (e: Exception) {
             SeedDataInitializer.DEFAULT_CATEGORIES
-        }
-    }
-
-    fun getCategoriesFlow(): Flow<List<String>> {
-        return settingsDao.getFlow(KEY_CATEGORIES).map { jsonStr ->
-            if (jsonStr == null) SeedDataInitializer.DEFAULT_CATEGORIES
-            else try {
-                json.decodeFromString<List<String>>(jsonStr)
-            } catch (e: Exception) {
-                SeedDataInitializer.DEFAULT_CATEGORIES
-            }
         }
     }
 
