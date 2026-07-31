@@ -31,6 +31,9 @@ jobs:
       - name: 运行验证（测试 + Lint + 构建）
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
 
+      - name: 构建 Release APK（R8 混淆 + 资源收缩）
+        run: ./gradlew assembleRelease --no-daemon
+
       - name: 上传 Lint 报告
         if: always()
         uses: actions/upload-artifact@v4
@@ -44,3 +47,10 @@ jobs:
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
+
+      - name: 上传 Release APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/release/*.apk
