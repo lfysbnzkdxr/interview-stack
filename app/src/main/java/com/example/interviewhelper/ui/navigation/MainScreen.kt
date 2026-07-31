@@ -16,7 +16,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.interviewhelper.ui.bank.BankScreen
-import com.example.interviewhelper.ui.browse.BrowseScreen
 import com.example.interviewhelper.ui.create.CreateScreen
 import com.example.interviewhelper.ui.practice.PracticeScreen
 import com.example.interviewhelper.ui.settings.SettingsScreen
@@ -62,9 +61,6 @@ fun MainScreen() {
         ) {
             composable(Screen.Practice.route) {
                 PracticeScreen()
-            }
-            composable(Screen.Browse.route) {
-                BrowseScreen()
             }
             composable(Screen.Create.route) {
                 CreateScreen()

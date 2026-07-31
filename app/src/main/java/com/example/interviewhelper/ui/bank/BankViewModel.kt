@@ -31,6 +31,8 @@ data class BankUiState(
     val loading: Boolean = true,
     val loadError: String? = null,
     val categories: List<String> = emptyList(),
+    val categoryCounts: Map<String, Int> = emptyMap(),
+    val visibleOnly: Boolean = false,
     val searchQuery: String = "",
     val filterCategory: String = "全部",
     val filterDifficulty: String = "全部",
@@ -59,19 +61,29 @@ class BankViewModel @Inject constructor(
     private val searchQueryFlow = MutableStateFlow("")
     private val filterCategoryFlow = MutableStateFlow("全部")
     private val filterDifficultyFlow = MutableStateFlow("全部")
+    private val visibleOnlyFlow = MutableStateFlow(false)
+
+    private data class FilterState(
+        val query: String,
+        val category: String,
+        val difficulty: String,
+        val visibleOnly: Boolean
+    )
 
     /** Paging 3 分页数据源，响应筛选条件变化 */
     val pagedQuestions: Flow<PagingData<QuestionEntity>> = combine(
         searchQueryFlow,
         filterCategoryFlow,
-        filterDifficultyFlow
-    ) { query, category, difficulty ->
-        Triple(query, category, difficulty)
-    }.flatMapLatest { (query, category, difficulty) ->
+        filterDifficultyFlow,
+        visibleOnlyFlow
+    ) { query, category, difficulty, visibleOnly ->
+        FilterState(query, category, difficulty, visibleOnly)
+    }.flatMapLatest { (query, category, difficulty, visibleOnly) ->
         questionRepository.getPagedQuestions(
             category = category.takeIf { it != "全部" },
             difficulty = difficulty.takeIf { it != "全部" },
-            query = query.takeIf { it.isNotBlank() }
+            query = query.takeIf { it.isNotBlank() },
+            visibleOnly = visibleOnly
         )
     }.cachedIn(viewModelScope)
 
@@ -84,12 +96,36 @@ class BankViewModel @Inject constructor(
             _uiState.update { it.copy(loading = true, loadError = null) }
             try {
                 val categories = settingsRepository.getCategories()
-                val totalCount = questionRepository.getQuestionCount().first()
-                _uiState.update {
-                    it.copy(loading = false, categories = categories, totalCount = totalCount)
-                }
+                _uiState.update { it.copy(loading = false, categories = categories) }
+                refreshStats(_uiState.value.visibleOnly)
             } catch (e: Exception) {
                 _uiState.update { it.copy(loading = false, loadError = "加载失败: ${e.message}") }
+            }
+        }
+    }
+
+    /** 刷新总数与分类计数（依赖 visibleOnly），不触发 loading 闪烁 */
+    private suspend fun refreshStats(visibleOnly: Boolean) {
+        val totalCount = if (visibleOnly) {
+            questionRepository.getVisibleCount().first()
+        } else {
+            questionRepository.getQuestionCount().first()
+        }
+        val categoryCounts = questionRepository.getCategoryCounts(visibleOnly).first()
+            .associate { it.category to it.count }
+        _uiState.update {
+            it.copy(totalCount = totalCount, categoryCounts = categoryCounts)
+        }
+    }
+
+    fun setVisibleOnly(visible: Boolean) {
+        _uiState.update { it.copy(visibleOnly = visible) }
+        visibleOnlyFlow.value = visible
+        viewModelScope.launch {
+            try {
+                refreshStats(visible)
+            } catch (e: Exception) {
+                // 统计刷新失败不影响分页数据，忽略
             }
         }
     }

@@ -35,6 +35,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -68,6 +71,15 @@ fun BankScreen(
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        // 分类 Tab（含计数）
+        CategoryTabs(
+            categories = uiState.categories,
+            activeCategory = uiState.filterCategory,
+            categoryCounts = uiState.categoryCounts,
+            onSelect = viewModel::setFilterCategory
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
         // 筛选栏
         FilterBar(uiState = uiState, viewModel = viewModel)
         Spacer(modifier = Modifier.height(8.dp))
@@ -159,6 +171,39 @@ fun BankScreen(
     }
 }
 
+@Composable
+private fun CategoryTabs(
+    categories: List<String>,
+    activeCategory: String,
+    categoryCounts: Map<String, Int>,
+    onSelect: (String) -> Unit
+) {
+    val tabs = listOf("全部") + categories
+    val selectedIndex = tabs.indexOf(activeCategory).coerceAtLeast(0)
+    val totalCount = categoryCounts.values.sum()
+
+    ScrollableTabRow(
+        selectedTabIndex = selectedIndex,
+        edgePadding = 16.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        tabs.forEachIndexed { index, category ->
+            val count = if (category == "全部") totalCount else categoryCounts[category] ?: 0
+            Tab(
+                selected = selectedIndex == index,
+                onClick = { onSelect(category) },
+                text = {
+                    Text(
+                        text = "$category ($count)",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FilterBar(uiState: BankUiState, viewModel: BankViewModel) {
@@ -170,23 +215,7 @@ private fun FilterBar(uiState: BankUiState, viewModel: BankViewModel) {
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // 分类筛选
-            var catExpanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(expanded = catExpanded, onExpandedChange = { catExpanded = it }, modifier = Modifier.weight(1f)) {
-                OutlinedTextField(
-                    value = uiState.filterCategory, onValueChange = {}, readOnly = true,
-                    label = { Text("分类") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(catExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    textStyle = MaterialTheme.typography.bodySmall
-                )
-                ExposedDropdownMenu(expanded = catExpanded, onDismissRequest = { catExpanded = false }) {
-                    (listOf("全部") + uiState.categories).forEach { item ->
-                        DropdownMenuItem(text = { Text(item) }, onClick = { viewModel.setFilterCategory(item); catExpanded = false })
-                    }
-                }
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             // 难度筛选
             var diffExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(expanded = diffExpanded, onExpandedChange = { diffExpanded = it }, modifier = Modifier.weight(1f)) {
@@ -202,6 +231,12 @@ private fun FilterBar(uiState: BankUiState, viewModel: BankViewModel) {
                         DropdownMenuItem(text = { Text(item) }, onClick = { viewModel.setFilterDifficulty(item); diffExpanded = false })
                     }
                 }
+            }
+            // 仅看可见题开关
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Text("仅看可见", style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.width(4.dp))
+                Switch(checked = uiState.visibleOnly, onCheckedChange = viewModel::setVisibleOnly)
             }
         }
     }

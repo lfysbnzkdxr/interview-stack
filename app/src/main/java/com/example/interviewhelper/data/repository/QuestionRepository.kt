@@ -3,6 +3,7 @@ package com.example.interviewhelper.data.repository
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import com.example.interviewhelper.data.local.CategoryCount
 import com.example.interviewhelper.data.local.QuestionDao
 import com.example.interviewhelper.data.local.QuestionEntity
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +24,11 @@ class QuestionRepository @Inject constructor(
     fun getVisibleQuestions(): Flow<List<QuestionEntity>> = questionDao.getVisible()
 
     fun getQuestionCount(): Flow<Int> = questionDao.getCount()
+
+    fun getVisibleCount(): Flow<Int> = questionDao.getVisibleCount()
+
+    fun getCategoryCounts(visibleOnly: Boolean): Flow<List<CategoryCount>> =
+        questionDao.getCategoryCounts(visibleOnly)
 
     suspend fun getQuestionById(id: String): QuestionEntity? = questionDao.getById(id)
 
@@ -96,11 +102,12 @@ class QuestionRepository @Inject constructor(
         questionDao.replaceAll(questions)
     }
 
-    // Paging 3 数据源
+    // Paging 3 数据源（visibleOnly = true 时仅分页未隐藏题目）
     fun getPagedQuestions(
         category: String? = null,
         difficulty: String? = null,
-        query: String? = null
+        query: String? = null,
+        visibleOnly: Boolean = false
     ): Flow<PagingData<QuestionEntity>> {
         return Pager(
             config = PagingConfig(
@@ -110,17 +117,17 @@ class QuestionRepository @Inject constructor(
             pagingSourceFactory = {
                 when {
                     category != null && difficulty != null && !query.isNullOrBlank() ->
-                        questionDao.getPagedByAll(category, difficulty, query)
+                        questionDao.getPagedByAll(category, difficulty, query, visibleOnly)
                     category != null && difficulty != null ->
-                        questionDao.getPagedByCategoryAndDifficulty(category, difficulty)
+                        questionDao.getPagedByCategoryAndDifficulty(category, difficulty, visibleOnly)
                     category != null && !query.isNullOrBlank() ->
-                        questionDao.getPagedByCategoryAndSearch(category, query)
+                        questionDao.getPagedByCategoryAndSearch(category, query, visibleOnly)
                     difficulty != null && !query.isNullOrBlank() ->
-                        questionDao.getPagedByDifficultyAndSearch(difficulty, query)
-                    category != null -> questionDao.getPagedByCategory(category)
-                    difficulty != null -> questionDao.getPagedByDifficulty(difficulty)
-                    !query.isNullOrBlank() -> questionDao.getPagedSearch(query)
-                    else -> questionDao.getPagedAll()
+                        questionDao.getPagedByDifficultyAndSearch(difficulty, query, visibleOnly)
+                    category != null -> questionDao.getPagedByCategory(category, visibleOnly)
+                    difficulty != null -> questionDao.getPagedByDifficulty(difficulty, visibleOnly)
+                    !query.isNullOrBlank() -> questionDao.getPagedSearch(query, visibleOnly)
+                    else -> questionDao.getPagedAll(visibleOnly)
                 }
             }
         ).flow
