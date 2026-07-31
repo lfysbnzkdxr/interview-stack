@@ -6,11 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.interviewhelper.data.model.ApiConfig
 import com.example.interviewhelper.data.model.ImportMode
 import com.example.interviewhelper.data.model.ProviderConfig
+import com.example.interviewhelper.data.model.ProviderPreset
 import com.example.interviewhelper.data.model.WebDavConfig
 import com.example.interviewhelper.data.model.WebDavFile
 import com.example.interviewhelper.data.remote.llm.LlmService
 import com.example.interviewhelper.data.remote.webdav.WebDavDataSource
 import com.example.interviewhelper.data.repository.BackupRepository
+import com.example.interviewhelper.data.repository.QuestionRepository
 import com.example.interviewhelper.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,7 +59,8 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val llmService: LlmService,
     private val webDavDataSource: WebDavDataSource,
-    private val backupRepository: BackupRepository
+    private val backupRepository: BackupRepository,
+    private val questionRepository: QuestionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -93,6 +96,19 @@ class SettingsViewModel @Inject constructor(
     fun setNewProviderUrl(v: String) = _uiState.update { it.copy(newProviderUrl = v) }
     fun setNewProviderKey(v: String) = _uiState.update { it.copy(newProviderKey = v) }
     fun setNewProviderModel(v: String) = _uiState.update { it.copy(newProviderModel = v) }
+
+    /**
+     * 应用预设提供商配置到添加表单（仅需用户补充 API Key）
+     */
+    fun applyPreset(preset: ProviderPreset) {
+        _uiState.update {
+            it.copy(
+                newProviderName = preset.name,
+                newProviderUrl = preset.baseUrl,
+                newProviderModel = preset.models.firstOrNull() ?: ""
+            )
+        }
+    }
 
     fun addProvider() {
         val state = _uiState.value
@@ -144,7 +160,8 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(dataMessage = "分类已存在") }
                 return@launch
             }
-            cats.add(cats.size - 1, trimmed) // 在"未分类"前
+            val insertIndex = (cats.size - 1).coerceAtLeast(0) // 在"未分类"前
+            cats.add(insertIndex, trimmed)
             settingsRepository.saveCategories(cats)
             _uiState.update { it.copy(categories = cats) }
         }
@@ -155,6 +172,8 @@ class SettingsViewModel @Inject constructor(
             val cats = settingsRepository.getCategories().toMutableList()
             cats.remove(name)
             settingsRepository.saveCategories(cats)
+            // 该分类下的题目迁移到"未分类"
+            questionRepository.updateCategoryName(name, "未分类")
             _uiState.update { it.copy(categories = cats) }
         }
     }
