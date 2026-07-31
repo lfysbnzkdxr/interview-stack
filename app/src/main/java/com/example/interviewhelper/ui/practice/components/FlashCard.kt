@@ -62,12 +62,17 @@ fun FlashCard(
                 detectTapGestures { onFlip() }
             }
             .pointerInput(question.id) {
-                detectHorizontalDragGestures { _, dragAmount ->
-                    when {
-                        dragAmount < -100 -> onNext()
-                        dragAmount > 100 -> onPrev()
-                    }
-                }
+                var totalDragX = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { totalDragX = 0f },
+                    onDragEnd = {
+                        when {
+                            totalDragX < -100 -> onNext()
+                            totalDragX > 100 -> onPrev()
+                        }
+                    },
+                    onHorizontalDrag = { _, dragAmount -> totalDragX += dragAmount }
+                )
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(

@@ -119,14 +119,40 @@ class LlmServiceTest {
     }
 
     @Test
-    fun `服务器错误返回失败信息`() = runTest {
+    fun `4xx 客户端错误不重试直接失败`() = runTest {
         mockActiveProvider()
+        server.enqueue(MockResponse().setResponseCode(400))
+
+        val result = service.generateQA("问题")
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("400") == true)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `5xx 服务端错误自动重试后失败`() = runTest {
+        mockActiveProvider()
+        server.enqueue(MockResponse().setResponseCode(500))
         server.enqueue(MockResponse().setResponseCode(500))
 
         val result = service.generateQA("问题")
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("500") == true)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `429 限流后重试成功`() = runTest {
+        mockActiveProvider()
+        server.enqueue(MockResponse().setResponseCode(429))
+        enqueueChatCompletion("""{"optimized_question": "Q", "dialog": "**Q**：x", "difficulty": "初级"}""")
+
+        val result = service.generateQA("问题")
+
+        assertTrue(result.isSuccess)
+        assertEquals(2, server.requestCount)
     }
 
     @Test

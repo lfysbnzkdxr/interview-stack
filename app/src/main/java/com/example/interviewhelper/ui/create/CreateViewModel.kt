@@ -221,7 +221,8 @@ class CreateViewModel @Inject constructor(
         viewModelScope.launch {
             val categories = settingsRepository.getCategories().toMutableList()
             if (name !in categories) {
-                categories.add(categories.size - 1, name) // 在"未分类"前插入
+                val insertIndex = (categories.size - 1).coerceAtLeast(0) // 在"未分类"前插入
+                categories.add(insertIndex, name)
                 settingsRepository.saveCategories(categories)
             }
             _uiState.update {

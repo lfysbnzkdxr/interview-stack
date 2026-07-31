@@ -19,6 +19,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,9 +37,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.interviewhelper.data.model.ImportMode
+import com.example.interviewhelper.data.model.ProviderConfig
+import com.example.interviewhelper.data.model.WebDavFile
 import com.example.interviewhelper.ui.common.ConfirmDialog
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -134,6 +139,22 @@ private fun ApiConfigSection(uiState: SettingsUiState, viewModel: SettingsViewMo
             if (uiState.showAddProviderForm) {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // 预设快捷选择
+                        var presetMenuExpanded by remember { mutableStateOf(false) }
+                        OutlinedButton(
+                            onClick = { presetMenuExpanded = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("从预设选择提供商")
+                        }
+                        DropdownMenu(expanded = presetMenuExpanded, onDismissRequest = { presetMenuExpanded = false }) {
+                            ProviderConfig.PRESETS.forEach { preset ->
+                                DropdownMenuItem(
+                                    text = { Text(preset.name) },
+                                    onClick = { viewModel.applyPreset(preset); presetMenuExpanded = false }
+                                )
+                            }
+                        }
                         OutlinedTextField(value = uiState.newProviderName, onValueChange = viewModel::setNewProviderName, label = { Text("名称") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = uiState.newProviderUrl, onValueChange = viewModel::setNewProviderUrl, label = { Text("Base URL") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = uiState.newProviderKey, onValueChange = viewModel::setNewProviderKey, label = { Text("API Key") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
@@ -273,6 +294,7 @@ private fun DataSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
 @Composable
 private fun WebDavSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     var showPassword by remember { mutableStateOf(false) }
+    var selectedBackupFile by remember { mutableStateOf<WebDavFile?>(null) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -312,8 +334,57 @@ private fun WebDavSection(uiState: SettingsUiState, viewModel: SettingsViewModel
                     if (uiState.webDavBackingUp) CircularProgressIndicator(Modifier.height(16.dp).width(16.dp))
                     else Text("立即备份")
                 }
-                OutlinedButton(onClick = { viewModel.restoreFromWebDav() }) { Text("从 WebDAV 恢复") }
+                OutlinedButton(onClick = { viewModel.loadWebDavBackups() }, enabled = !uiState.webDavRestoring) {
+                    if (uiState.webDavRestoring) CircularProgressIndicator(Modifier.height(16.dp).width(16.dp))
+                    else Text("从 WebDAV 恢复")
+                }
             }
         }
+    }
+
+    // 备份文件选择弹窗
+    if (uiState.showBackupPicker) {
+        if (uiState.webDavBackupFiles.isEmpty()) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissBackupPicker() },
+                title = { Text("WebDAV 恢复") },
+                text = { Text("服务器上无备份文件") },
+                confirmButton = { TextButton(onClick = { viewModel.dismissBackupPicker() }) { Text("确定") } }
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissBackupPicker() },
+                title = { Text("选择备份文件") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        uiState.webDavBackupFiles.forEach { file ->
+                            TextButton(
+                                onClick = { selectedBackupFile = file; viewModel.dismissBackupPicker() },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = { TextButton(onClick = { viewModel.dismissBackupPicker() }) { Text("取消") } }
+            )
+        }
+    }
+
+    // 导入模式选择弹窗
+    selectedBackupFile?.let { file ->
+        AlertDialog(
+            onDismissRequest = { selectedBackupFile = null },
+            title = { Text("确认恢复") },
+            text = { Text("将使用 ${file.name} 恢复数据。\n\n覆盖：替换现有数据\n合并：保留本地数据并追加新题目") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.restoreFromWebDav(file, ImportMode.MERGE); selectedBackupFile = null }) { Text("合并") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.restoreFromWebDav(file, ImportMode.OVERWRITE); selectedBackupFile = null }) { Text("覆盖") }
+            }
+        )
     }
 }

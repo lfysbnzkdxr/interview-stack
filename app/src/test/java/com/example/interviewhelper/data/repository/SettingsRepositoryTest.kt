@@ -60,10 +60,9 @@ class SettingsRepositoryTest {
     }
 
     @Test
-    fun `覆盖导入清空并写入题目和分类`() = runTest {
+    fun `覆盖导入事务性清空并写入题目和分类`() = runTest {
         val newQuestion = sampleQuestion("q9")
-        coEvery { questionRepository.deleteAll() } returns Unit
-        coEvery { questionRepository.insertAll(any()) } returns Unit
+        coEvery { questionRepository.replaceAll(any()) } returns Unit
         coEvery { settingsDao.put(any()) } returns Unit
 
         val importStr = json.encodeToString(
@@ -73,8 +72,8 @@ class SettingsRepositoryTest {
         val result = repository.importData(importStr, ImportMode.OVERWRITE)
 
         assertTrue(result.isSuccess)
-        coVerify { questionRepository.deleteAll() }
-        coVerify { questionRepository.insertAll(listOf(newQuestion)) }
+        coVerify { questionRepository.replaceAll(listOf(newQuestion)) }
+        coVerify(exactly = 0) { questionRepository.deleteAll() }
         coVerify { settingsDao.put(match { it.value == json.encodeToString(categories) }) }
     }
 

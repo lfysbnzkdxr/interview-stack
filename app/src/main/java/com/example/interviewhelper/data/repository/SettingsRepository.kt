@@ -172,8 +172,7 @@ class SettingsRepository @Inject constructor(
 
             when (mode) {
                 ImportMode.OVERWRITE -> {
-                    questionRepository.deleteAll()
-                    questionRepository.insertAll(importData.questions)
+                    questionRepository.replaceAll(importData.questions)
                     saveCategories(importData.categories)
                 }
                 ImportMode.MERGE -> {

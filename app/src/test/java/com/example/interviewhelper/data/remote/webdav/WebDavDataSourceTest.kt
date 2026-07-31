@@ -7,6 +7,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -96,13 +97,15 @@ class WebDavDataSourceTest {
 
         assertTrue(result.isSuccess)
         val files = result.getOrThrow()
+        // 自身目录（/backups/）应被排除，仅保留备份文件
+        assertEquals(1, files.size)
         val backup = files.find { it.name == "auto-backup-20260730-120000.json" }
         assertNotNull(backup)
         assertEquals(1234L, backup!!.size)
         val expected = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US)
             .parse("Thu, 30 Jul 2026 12:00:00 GMT")!!.time
         assertEquals(expected, backup.lastModified)
-        assertTrue(files.any { it.isDirectory })
+        assertFalse(files.any { it.isDirectory })
     }
 
     @Test

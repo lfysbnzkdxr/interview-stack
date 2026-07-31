@@ -6,6 +6,8 @@ import com.example.interviewhelper.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import javax.inject.Inject
@@ -19,6 +21,8 @@ class SeedDataInitializer @Inject constructor(
     private val json: Json,
     @ApplicationScope private val applicationScope: CoroutineScope
 ) {
+    private val mutex = Mutex()
+
     companion object {
         private const val KEY_INITIALIZED = "initialized"
         private const val KEY_CATEGORIES = "categories"
@@ -28,7 +32,7 @@ class SeedDataInitializer @Inject constructor(
 
     fun initialize() {
         applicationScope.launch {
-            initializeSync()
+            mutex.withLock { doInitialize() }
         }
     }
 
@@ -36,6 +40,13 @@ class SeedDataInitializer @Inject constructor(
      * 同步执行种子数据初始化（供 resetToDefault 等场景在调用方协程中直接调用）
      */
     suspend fun initializeSync() {
+        mutex.withLock { doInitialize() }
+    }
+
+    /**
+     * check-then-act 初始化逻辑，由 Mutex 保护避免并发重复导入
+     */
+    private suspend fun doInitialize() {
         try {
             val initialized = settingsDao.get(KEY_INITIALIZED)
             if (initialized == "true") return
