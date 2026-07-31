@@ -19,6 +19,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.interviewhelper.data.model.ImportMode
+import com.example.interviewhelper.data.model.ProviderConfig
 import com.example.interviewhelper.data.model.WebDavFile
 import com.example.interviewhelper.ui.common.ConfirmDialog
 import androidx.compose.material.icons.Icons
@@ -136,6 +139,22 @@ private fun ApiConfigSection(uiState: SettingsUiState, viewModel: SettingsViewMo
             if (uiState.showAddProviderForm) {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // 预设快捷选择
+                        var presetMenuExpanded by remember { mutableStateOf(false) }
+                        OutlinedButton(
+                            onClick = { presetMenuExpanded = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("从预设选择提供商")
+                        }
+                        DropdownMenu(expanded = presetMenuExpanded, onDismissRequest = { presetMenuExpanded = false }) {
+                            ProviderConfig.PRESETS.forEach { preset ->
+                                DropdownMenuItem(
+                                    text = { Text(preset.name) },
+                                    onClick = { viewModel.applyPreset(preset); presetMenuExpanded = false }
+                                )
+                            }
+                        }
                         OutlinedTextField(value = uiState.newProviderName, onValueChange = viewModel::setNewProviderName, label = { Text("名称") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = uiState.newProviderUrl, onValueChange = viewModel::setNewProviderUrl, label = { Text("Base URL") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = uiState.newProviderKey, onValueChange = viewModel::setNewProviderKey, label = { Text("API Key") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())

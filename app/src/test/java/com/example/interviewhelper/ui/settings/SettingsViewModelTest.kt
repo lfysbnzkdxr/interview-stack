@@ -5,11 +5,13 @@ import com.example.interviewhelper.MainDispatcherExtension
 import com.example.interviewhelper.data.model.ApiConfig
 import com.example.interviewhelper.data.model.ImportMode
 import com.example.interviewhelper.data.model.ProviderConfig
+import com.example.interviewhelper.data.model.ProviderPreset
 import com.example.interviewhelper.data.model.WebDavConfig
 import com.example.interviewhelper.data.model.WebDavFile
 import com.example.interviewhelper.data.remote.llm.LlmService
 import com.example.interviewhelper.data.remote.webdav.WebDavDataSource
 import com.example.interviewhelper.data.repository.BackupRepository
+import com.example.interviewhelper.data.repository.QuestionRepository
 import com.example.interviewhelper.data.repository.SettingsRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -34,6 +36,7 @@ class SettingsViewModelTest {
     private lateinit var llmService: LlmService
     private lateinit var webDavDataSource: WebDavDataSource
     private lateinit var backupRepository: BackupRepository
+    private lateinit var questionRepository: QuestionRepository
 
     @BeforeEach
     fun setUp() {
@@ -41,12 +44,15 @@ class SettingsViewModelTest {
         llmService = mockk()
         webDavDataSource = mockk()
         backupRepository = mockk()
+        questionRepository = mockk()
         coEvery { settingsRepository.getApiConfig() } returns ApiConfig()
         coEvery { settingsRepository.getCategories() } returns emptyList()
         coEvery { settingsRepository.getWebDavConfig() } returns WebDavConfig()
     }
 
-    private fun createViewModel() = SettingsViewModel(settingsRepository, llmService, webDavDataSource, backupRepository)
+    private fun createViewModel() = SettingsViewModel(
+        settingsRepository, llmService, webDavDataSource, backupRepository, questionRepository
+    )
 
     private fun provider(id: String = "p1") = ProviderConfig(
         id = id,
@@ -130,6 +136,38 @@ class SettingsViewModelTest {
 
         coVerify { settingsRepository.saveCategories(any()) }
         assertTrue("RAG 检索增强" in viewModel.uiState.value.categories)
+    }
+
+    @Test
+    fun `删除分类时将题目迁移到未分类`() = runTest(mainDispatcher.testDispatcher.scheduler) {
+        coEvery { settingsRepository.getCategories() } returns listOf("Python", "未分类")
+        coEvery { settingsRepository.saveCategories(any()) } returns Unit
+        coEvery { questionRepository.updateCategoryName(any(), any()) } returns Unit
+        val viewModel = createViewModel()
+
+        viewModel.deleteCategory("Python")
+        advanceUntilIdle()
+
+        coVerify { questionRepository.updateCategoryName("Python", "未分类") }
+        assertTrue("Python" !in viewModel.uiState.value.categories)
+    }
+
+    @Test
+    fun `应用预设自动填充添加表单`() = runTest(mainDispatcher.testDispatcher.scheduler) {
+        val viewModel = createViewModel()
+
+        viewModel.showAddProvider()
+        viewModel.applyPreset(
+            ProviderPreset(
+                name = "DeepSeek",
+                baseUrl = "https://api.deepseek.com/v1",
+                models = listOf("deepseek-chat", "deepseek-reasoner")
+            )
+        )
+
+        assertEquals("DeepSeek", viewModel.uiState.value.newProviderName)
+        assertEquals("https://api.deepseek.com/v1", viewModel.uiState.value.newProviderUrl)
+        assertEquals("deepseek-chat", viewModel.uiState.value.newProviderModel)
     }
 
     @Test
