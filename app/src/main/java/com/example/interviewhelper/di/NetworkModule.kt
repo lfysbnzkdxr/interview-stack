@@ -24,7 +24,8 @@ object NetworkModule {
 
         if (BuildConfig.DEBUG) {
             builder.addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.HEADERS
+                // BASIC 仅记录方法/URL/状态码，不记录 header（避免泄露 Authorization 凭据）
+                level = HttpLoggingInterceptor.Level.BASIC
             })
         }
         return builder.build()
