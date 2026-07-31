@@ -272,7 +272,7 @@ class WebDavDataSource @Inject constructor(
                                 } else {
                                     currentName
                                 }
-                                if (finalName.isNotEmpty() && decodedHref != baseUrl.trimEnd('/') + "/") {
+                                if (finalName.isNotEmpty() && !isSelfDirectory(decodedHref, baseUrl)) {
                                     files.add(
                                         WebDavFile(
                                             name = finalName,
@@ -304,5 +304,26 @@ class WebDavDataSource @Inject constructor(
         } catch (e: Exception) {
             0L
         }
+    }
+
+    /**
+     * 判断 href 是否指向 PROPFIND 请求的目录自身（服务器返回的第一个 response）
+     */
+    private fun isSelfDirectory(href: String, baseUrl: String): Boolean {
+        return pathOf(href) == pathOf(baseUrl)
+    }
+
+    /**
+     * 提取 URL 的路径部分（忽略 host 与尾部斜杠），href 既可能是完整 URL 也可能是相对路径
+     */
+    private fun pathOf(url: String): String {
+        var value = url.trimEnd('/')
+        if (value.isEmpty()) return ""
+        val schemeIdx = value.indexOf("://")
+        if (schemeIdx >= 0) {
+            val hostEnd = value.indexOf('/', schemeIdx + 3)
+            value = if (hostEnd >= 0) value.substring(hostEnd) else ""
+        }
+        return value.trimEnd('/')
     }
 }
