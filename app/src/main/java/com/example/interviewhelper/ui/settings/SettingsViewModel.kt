@@ -7,6 +7,7 @@ import com.example.interviewhelper.data.model.ApiConfig
 import com.example.interviewhelper.data.model.ImportMode
 import com.example.interviewhelper.data.model.ProviderConfig
 import com.example.interviewhelper.data.model.WebDavConfig
+import com.example.interviewhelper.data.model.WebDavFile
 import com.example.interviewhelper.data.remote.llm.LlmService
 import com.example.interviewhelper.data.remote.webdav.WebDavDataSource
 import com.example.interviewhelper.data.repository.BackupRepository
@@ -45,7 +46,10 @@ data class SettingsUiState(
     val webDavPath: String = "/interview-backups/",
     val webDavTesting: Boolean = false,
     val webDavMessage: String? = null,
-    val webDavBackingUp: Boolean = false
+    val webDavBackingUp: Boolean = false,
+    val webDavRestoring: Boolean = false,
+    val webDavBackupFiles: List<WebDavFile> = emptyList(),
+    val showBackupPicker: Boolean = false
 )
 
 @HiltViewModel
@@ -235,7 +239,10 @@ class SettingsViewModel @Inject constructor(
                 webDavDataSource.ensureDirectory(config)
                 val result = webDavDataSource.uploadBackup(config, fileName, data)
                 result.fold(
-                    onSuccess = { _uiState.update { it.copy(webDavBackingUp = false, webDavMessage = "备份完成: $fileName") } },
+                    onSuccess = {
+                        _uiState.update { it.copy(webDavBackingUp = false, webDavMessage = "备份完成: $fileName") }
+                        cleanupManualBackups()
+                    },
                     onFailure = { e -> _uiState.update { it.copy(webDavBackingUp = false, webDavMessage = "备份失败: ${e.message}") } }
                 )
             } catch (e: Exception) {
@@ -244,38 +251,100 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun restoreFromWebDav() {
+    /**
+     * 拉取服务器上的备份文件列表并弹出选择器
+     */
+    fun loadWebDavBackups() {
         viewModelScope.launch {
-            _uiState.update { it.copy(webDavMessage = "正在获取备份列表...") }
+            _uiState.update { it.copy(webDavRestoring = true, webDavMessage = null) }
             try {
                 val config = settingsRepository.getWebDavConfig()
-                val files = webDavDataSource.listFiles(config)
-                files.fold(
-                    onSuccess = { fileList ->
-                        val jsonFiles = fileList.filter { it.name.endsWith(".json") }.sortedByDescending { it.lastModified }
-                        if (jsonFiles.isEmpty()) {
-                            _uiState.update { it.copy(webDavMessage = "服务器上无备份文件") }
-                        } else {
-                            // 下载最新的备份
-                            val latest = jsonFiles.first()
-                            val downloadResult = webDavDataSource.downloadBackup(config, latest.name)
-                            downloadResult.fold(
-                                onSuccess = { jsonStr ->
-                                    val importResult = settingsRepository.importData(jsonStr, com.example.interviewhelper.data.model.ImportMode.OVERWRITE)
-                                    importResult.fold(
-                                        onSuccess = { count -> _uiState.update { it.copy(webDavMessage = "恢复成功: 导入 $count 道题目") }; loadAll() },
-                                        onFailure = { e -> _uiState.update { it.copy(webDavMessage = "恢复失败: ${e.message}") } }
-                                    )
-                                },
-                                onFailure = { e -> _uiState.update { it.copy(webDavMessage = "下载失败: ${e.message}") } }
-                            )
-                        }
-                    },
-                    onFailure = { e -> _uiState.update { it.copy(webDavMessage = "获取列表失败: ${e.message}") } }
-                )
+                val listResult = webDavDataSource.listFiles(config)
+                val files = listResult.getOrNull()
+                if (files == null) {
+                    _uiState.update {
+                        it.copy(
+                            webDavRestoring = false,
+                            webDavMessage = "获取备份列表失败: ${listResult.exceptionOrNull()?.message ?: "未知错误"}"
+                        )
+                    }
+                    return@launch
+                }
+                val jsonFiles = files
+                    .filter { it.name.endsWith(".json") }
+                    .sortedByDescending { it.lastModified }
+                _uiState.update {
+                    it.copy(webDavRestoring = false, webDavBackupFiles = jsonFiles, showBackupPicker = true)
+                }
             } catch (e: Exception) {
-                _uiState.update { it.copy(webDavMessage = "恢复失败: ${e.message}") }
+                _uiState.update {
+                    it.copy(webDavRestoring = false, webDavMessage = "获取备份列表失败: ${e.message}")
+                }
             }
         }
+    }
+
+    fun dismissBackupPicker() = _uiState.update { it.copy(showBackupPicker = false) }
+
+    /**
+     * 从指定备份文件恢复（需用户先选择文件并确认导入模式）
+     */
+    fun restoreFromWebDav(file: WebDavFile, mode: ImportMode) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(webDavRestoring = true, webDavMessage = null) }
+            try {
+                val config = settingsRepository.getWebDavConfig()
+                val downloadResult = webDavDataSource.downloadBackup(config, file.name)
+                downloadResult.fold(
+                    onSuccess = { jsonStr ->
+                        val importResult = settingsRepository.importData(jsonStr, mode)
+                        importResult.fold(
+                            onSuccess = { count ->
+                                _uiState.update {
+                                    it.copy(
+                                        webDavRestoring = false,
+                                        showBackupPicker = false,
+                                        webDavMessage = "恢复成功: 导入 $count 道题目"
+                                    )
+                                }
+                                loadAll()
+                            },
+                            onFailure = { e ->
+                                _uiState.update { it.copy(webDavRestoring = false, webDavMessage = "恢复失败: ${e.message}") }
+                            }
+                        )
+                    },
+                    onFailure = { e ->
+                        _uiState.update { it.copy(webDavRestoring = false, webDavMessage = "下载失败: ${e.message}") }
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.update { it.copy(webDavRestoring = false, webDavMessage = "恢复失败: ${e.message}") }
+            }
+        }
+    }
+
+    /**
+     * 清理过旧的手动备份，仅保留最近 MANUAL_BACKUP_KEEP 个
+     */
+    private suspend fun cleanupManualBackups() {
+        try {
+            val config = settingsRepository.getWebDavConfig()
+            val files = webDavDataSource.listFiles(config).getOrNull() ?: return
+            val backups = files
+                .filter { it.name.startsWith("interview-backup-") && it.name.endsWith(".json") }
+                .sortedByDescending { it.name }  // 文件名含时间戳，字典序即时间序
+            if (backups.size > MANUAL_BACKUP_KEEP) {
+                backups.drop(MANUAL_BACKUP_KEEP).forEach { old ->
+                    webDavDataSource.deleteBackup(config, old.name)  // 删除失败不影响主流程
+                }
+            }
+        } catch (e: Exception) {
+            // 清理失败不影响主流程
+        }
+    }
+
+    companion object {
+        private const val MANUAL_BACKUP_KEEP = 5
     }
 }
