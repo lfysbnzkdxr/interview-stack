@@ -138,7 +138,7 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.room.testing)
     // XmlPullParser 实现（JVM 单元测试中 android.util.Xml 不可用）
-    testImplementation("net.sf.kxml:kxml2:2.3.0")
+    testImplementation(libs.kxml2)
 
     // Android Testing
     androidTestImplementation(libs.mockk.android)
