@@ -77,6 +77,12 @@ interface QuestionDao {
         questions.forEach { update(it) }
     }
 
+    @Transaction
+    suspend fun replaceAll(questions: List<QuestionEntity>) {
+        deleteAll()
+        insertAll(questions)
+    }
+
     // Paging 3 数据源
     @Query("SELECT * FROM questions ORDER BY createdAt DESC")
     fun getPagedAll(): PagingSource<Int, QuestionEntity>

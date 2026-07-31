@@ -104,6 +104,13 @@ class QuestionRepository @Inject constructor(
         questionDao.insertAll(questions)
     }
 
+    /**
+     * 事务性覆盖：清空后写入（用于 OVERWRITE 导入，避免中途失败留下空库）
+     */
+    suspend fun replaceAll(questions: List<QuestionEntity>) {
+        questionDao.replaceAll(questions)
+    }
+
     // Paging 3 数据源
     fun getPagedQuestions(
         category: String? = null,
