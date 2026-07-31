@@ -6,6 +6,7 @@ app/build/
 
 # Local configuration (SDK paths)
 local.properties
+keystore.properties
 
 # IDE
 .idea/
