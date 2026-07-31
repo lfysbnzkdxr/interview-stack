@@ -146,11 +146,18 @@ $dialog
             return Result.failure(Exception("API Key 为空，请先在设置中配置"))
         }
 
-        var lastError: Exception? = null
+        var lastError: Throwable? = null
         repeat(MAX_RETRIES + 1) { attempt ->
             try {
                 val result = doCall(provider, prompt)
-                return result
+                // HTTP 5xx / 429 属于临时性错误，可重试；其余失败（4xx 等）直接返回
+                if (result.isSuccess || !isRetryableHttpError(result)) {
+                    return result
+                }
+                lastError = result.exceptionOrNull()
+                if (attempt < MAX_RETRIES) {
+                    delay(RETRY_DELAY)
+                }
             } catch (e: Exception) {
                 lastError = e
                 if (attempt < MAX_RETRIES) {
@@ -159,6 +166,15 @@ $dialog
             }
         }
         return Result.failure(lastError ?: Exception("未知错误"))
+    }
+
+    /**
+     * 判断失败是否为可重试的 HTTP 错误（5xx 服务端错误或 429 限流）
+     */
+    private fun isRetryableHttpError(result: Result<LlmResult>): Boolean {
+        val message = result.exceptionOrNull()?.message ?: return false
+        val code = Regex("""\((\d{3})\)""").find(message)?.groupValues?.get(1)?.toIntOrNull() ?: return false
+        return code == 429 || code >= 500
     }
 
     private suspend fun doCall(provider: ProviderConfig, prompt: String): Result<LlmResult> =
