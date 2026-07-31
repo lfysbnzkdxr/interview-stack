@@ -24,6 +24,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -81,8 +83,14 @@ fun BankScreen(
 
         // 批量操作栏
         if (uiState.selectedIds.isNotEmpty()) {
+            val allVisibleIds = pagingItems.itemSnapshotList.items.mapNotNull { it?.id }
+            val allSelected = allVisibleIds.isNotEmpty() && allVisibleIds.all { it in uiState.selectedIds }
             BatchBar(
                 count = uiState.selectedIds.size,
+                allSelected = allSelected,
+                onSelectAll = { viewModel.selectAll(allVisibleIds) },
+                categories = uiState.categories,
+                onBatchMoveCategory = viewModel::batchMoveCategory,
                 onBatchDelete = { showBatchDeleteDialog = true },
                 onBatchHide = viewModel::batchHide,
                 onBatchUnhide = viewModel::batchUnhide,
@@ -201,15 +209,40 @@ private fun FilterBar(uiState: BankUiState, viewModel: BankViewModel) {
 }
 
 @Composable
-private fun BatchBar(count: Int, onBatchDelete: () -> Unit, onBatchHide: () -> Unit, onBatchUnhide: () -> Unit, onClear: () -> Unit) {
+private fun BatchBar(
+    count: Int,
+    allSelected: Boolean,
+    onSelectAll: () -> Unit,
+    categories: List<String>,
+    onBatchMoveCategory: (String) -> Unit,
+    onBatchDelete: () -> Unit,
+    onBatchHide: () -> Unit,
+    onBatchUnhide: () -> Unit,
+    onClear: () -> Unit
+) {
+    var showCatMenu by remember { mutableStateOf(false) }
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-        Row(modifier = Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("已选 $count 道", style = MaterialTheme.typography.labelLarge)
-            Row {
-                TextButton(onClick = onBatchHide) { Text("隐藏") }
-                TextButton(onClick = onBatchUnhide) { Text("取消隐藏") }
-                TextButton(onClick = onBatchDelete) { Text("删除", color = MaterialTheme.colorScheme.error) }
-                TextButton(onClick = onClear) { Text("取消") }
+        Column {
+            Row(modifier = Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = allSelected, onCheckedChange = { onSelectAll() })
+                    Text("已选 $count 道", style = MaterialTheme.typography.labelLarge)
+                }
+                Row {
+                    TextButton(onClick = onBatchHide) { Text("隐藏") }
+                    TextButton(onClick = onBatchUnhide) { Text("取消隐藏") }
+                    TextButton(onClick = { showCatMenu = true }) { Text("移动分类") }
+                    TextButton(onClick = onBatchDelete) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                    TextButton(onClick = onClear) { Text("取消") }
+                }
+            }
+            DropdownMenu(expanded = showCatMenu, onDismissRequest = { showCatMenu = false }) {
+                categories.forEach { cat ->
+                    DropdownMenuItem(
+                        text = { Text(cat) },
+                        onClick = { onBatchMoveCategory(cat); showCatMenu = false }
+                    )
+                }
             }
         }
     }
