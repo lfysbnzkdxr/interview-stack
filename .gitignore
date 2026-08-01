@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+app/build/
+.kotlin/
+
+# Local configuration (SDK paths)
+local.properties
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Agent tooling state
+.codegraph/
+.omo/
+.qoder/
+
+# Misc
+*.log
+build_log.txt
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+PROGRESS.md
