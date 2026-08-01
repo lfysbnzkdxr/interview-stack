@@ -2,6 +2,7 @@ package com.example.interviewhelper
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -42,8 +43,9 @@ class AppNavigationTest {
     fun 题库页分类Tab显示计数() {
         composeRule.onNodeWithText("题库").performClick()
 
-        composeRule.onNodeWithText("全部", substring = true).assertIsDisplayed()
-        composeRule.onNodeWithText("Agent 智能体", substring = true).assertIsDisplayed()
+        // Tab 文本带计数（"全部 (N)"），与难度下拉的"全部"区分
+        composeRule.onNodeWithText("全部 (", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Agent 智能体 (", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -54,8 +56,8 @@ class AppNavigationTest {
         composeRule.onNodeWithText("什么是 AI Agent？它与传统聊天机器人有什么区别？")
             .performClick()
 
-        // 展开后显示答案内容（Markdown 渲染）
-        composeRule.onNodeWithText("自主性", substring = true).assertIsDisplayed()
+        // 展开后显示操作按钮（编辑/隐藏/删除），避开 Markdown 渲染文本拆分问题
+        composeRule.onNodeWithContentDescription("编辑").assertIsDisplayed()
     }
 
     @Test

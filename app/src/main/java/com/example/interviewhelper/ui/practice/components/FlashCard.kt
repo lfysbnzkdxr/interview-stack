@@ -3,7 +3,6 @@ package com.example.interviewhelper.ui.practice.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,9 +21,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,7 +40,6 @@ import com.example.interviewhelper.ui.theme.DifficultyIntermediate
 fun FlashCard(
     question: QuestionEntity,
     isFlipped: Boolean,
-    onFlip: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
     modifier: Modifier = Modifier
@@ -54,12 +54,10 @@ fun FlashCard(
         modifier = modifier
             .fillMaxWidth()
             .height(420.dp)
+            .testTag("flashCard")
             .graphicsLayer {
                 rotationY = rotation
                 cameraDistance = 12f * density
-            }
-            .pointerInput(question.id) {
-                detectTapGestures { onFlip() }
             }
             .pointerInput(question.id) {
                 var totalDragX = 0f
@@ -124,12 +122,6 @@ private fun CardFront(question: QuestionEntity) {
         )
 
         Spacer(modifier = Modifier.weight(1f))
-
-        Text(
-            text = "点击翻转查看答案",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

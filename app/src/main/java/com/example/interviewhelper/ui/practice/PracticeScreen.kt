@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -71,7 +72,6 @@ fun PracticeScreen(
                 FlashCard(
                     question = uiState.currentQuestion!!,
                     isFlipped = uiState.isFlipped,
-                    onFlip = viewModel::flip,
                     onNext = viewModel::next,
                     onPrev = viewModel::prev,
                     modifier = Modifier.weight(1f)
@@ -79,12 +79,12 @@ fun PracticeScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 导航按钮
+                // 导航按钮：上一题 / 翻转显示答案 / 下一题
                 NavButtons(
-                    progress = uiState.progress,
                     isFirst = uiState.isFirst,
                     isLast = uiState.isLast,
                     onPrev = viewModel::prev,
+                    onFlip = viewModel::flip,
                     onNext = viewModel::next
                 )
             }
@@ -175,10 +175,10 @@ private fun FilterBar(
 
 @Composable
 private fun NavButtons(
-    progress: String,
     isFirst: Boolean,
     isLast: Boolean,
     onPrev: () -> Unit,
+    onFlip: () -> Unit,
     onNext: () -> Unit
 ) {
     Row(
@@ -195,10 +195,9 @@ private fun NavButtons(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        Text(
-            text = progress,
-            style = MaterialTheme.typography.titleMedium
-        )
+        Button(onClick = onFlip) {
+            Text("翻转显示答案")
+        }
 
         Spacer(modifier = Modifier.width(16.dp))
 
