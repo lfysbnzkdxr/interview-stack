@@ -4,8 +4,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -27,17 +31,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Tab
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,20 +48,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.interviewhelper.data.local.QuestionEntity
 import com.example.interviewhelper.ui.common.AppMarkdownText
+import com.example.interviewhelper.ui.common.CategoryTag
 import com.example.interviewhelper.ui.common.ConfirmDialog
+import com.example.interviewhelper.ui.common.DifficultyTag
 import com.example.interviewhelper.ui.common.ErrorState
+import com.example.interviewhelper.ui.common.FilterBar
 import com.example.interviewhelper.ui.common.LoadingState
-import com.example.interviewhelper.ui.practice.components.CategoryTag
-import com.example.interviewhelper.ui.practice.components.DifficultyTag
+import com.example.interviewhelper.ui.common.PageHeader
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BankScreen(
     viewModel: BankViewModel = hiltViewModel()
@@ -72,26 +72,33 @@ fun BankScreen(
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        // HyperOS 风格页头：大标题 + 总题数副标题
+        PageHeader(
+            title = "题库",
+            subtitle = "共 ${uiState.totalCount} 道题"
+        )
+
         // 分类 Tab（含计数）
         CategoryTabs(
             categories = uiState.categories,
             activeCategory = uiState.filterCategory,
             categoryCounts = uiState.categoryCounts,
-            onSelect = viewModel::setFilterCategory
+            onSelect = viewModel::setFilterCategory,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
-        Spacer(modifier = Modifier.height(8.dp))
 
-        // 筛选栏
-        FilterBar(uiState = uiState, viewModel = viewModel)
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // 统计
-        Text(
-            text = "共 ${uiState.totalCount} 道题",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        // 筛选栏（搜索 + 难度 + 可见性开关）
+        FilterBar(
+            selectedDifficulty = uiState.filterDifficulty,
+            onDifficultyChange = viewModel::setFilterDifficulty,
+            showSearch = true,
+            searchQuery = uiState.searchQuery,
+            onSearchChange = viewModel::setSearchQuery,
+            showVisibleSwitch = true,
+            visibleOnly = uiState.visibleOnly,
+            onVisibleOnlyChange = viewModel::setVisibleOnly,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
-        Spacer(modifier = Modifier.height(8.dp))
 
         // 批量操作栏
         if (uiState.selectedIds.isNotEmpty()) {
@@ -106,22 +113,34 @@ fun BankScreen(
                 onBatchDelete = { showBatchDeleteDialog = true },
                 onBatchHide = viewModel::batchHide,
                 onBatchUnhide = viewModel::batchUnhide,
-                onClear = viewModel::clearSelection
+                onClear = viewModel::clearSelection,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
         }
 
         // 内容
         when {
-            uiState.loading -> LoadingState()
-            uiState.loadError != null -> ErrorState(message = uiState.loadError!!, onRetry = viewModel::reload)
+            uiState.loading -> LoadingState(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            uiState.loadError != null -> ErrorState(
+                message = uiState.loadError!!,
+                onRetry = viewModel::reload,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
             pagingItems.itemCount == 0 -> {
-                Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Column(
+                    Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
                     Text("没有匹配的题目", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             else -> {
-                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     items(count = pagingItems.itemCount) { index ->
                         val question = pagingItems[index]
                         if (question != null) {
@@ -172,75 +191,41 @@ fun BankScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryTabs(
     categories: List<String>,
     activeCategory: String,
     categoryCounts: Map<String, Int>,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val tabs = listOf("全部") + categories
     val selectedIndex = tabs.indexOf(activeCategory).coerceAtLeast(0)
     val totalCount = categoryCounts.values.sum()
 
-    ScrollableTabRow(
-        selectedTabIndex = selectedIndex,
-        edgePadding = 16.dp,
-        modifier = Modifier.fillMaxWidth()
+    // 分类胶囊：横向滚动，选中主色填充、未选中浅灰容器
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         tabs.forEachIndexed { index, category ->
             val count = if (category == "全部") totalCount else categoryCounts[category] ?: 0
-            Tab(
-                selected = selectedIndex == index,
-                onClick = { onSelect(category) },
-                text = {
-                    Text(
-                        text = "$category ($count)",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FilterBar(uiState: BankUiState, viewModel: BankViewModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = uiState.searchQuery,
-            onValueChange = viewModel::setSearchQuery,
-            placeholder = { Text("搜索题目...") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            // 难度筛选
-            var diffExpanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(expanded = diffExpanded, onExpandedChange = { diffExpanded = it }, modifier = Modifier.weight(1f)) {
-                OutlinedTextField(
-                    value = uiState.filterDifficulty, onValueChange = {}, readOnly = true,
-                    label = { Text("难度") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(diffExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    textStyle = MaterialTheme.typography.bodySmall
-                )
-                ExposedDropdownMenu(expanded = diffExpanded, onDismissRequest = { diffExpanded = false }) {
-                    listOf("全部", "初级", "中级", "高级").forEach { item ->
-                        DropdownMenuItem(text = { Text(item) }, onClick = { viewModel.setFilterDifficulty(item); diffExpanded = false })
-                    }
-                }
-            }
-            // 仅看可见题开关
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                Text("仅看可见", style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.width(4.dp))
-                Switch(
-                    checked = uiState.visibleOnly,
-                    onCheckedChange = viewModel::setVisibleOnly,
-                    modifier = Modifier.testTag("visibleOnlySwitch")
+            val selected = index == selectedIndex
+            Surface(
+                shape = RoundedCornerShape(percent = 50),
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer,
+                onClick = { onSelect(category) }
+            ) {
+                Text(
+                    text = "$category ($count)",
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -257,10 +242,16 @@ private fun BatchBar(
     onBatchDelete: () -> Unit,
     onBatchHide: () -> Unit,
     onBatchUnhide: () -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var showCatMenu by remember { mutableStateOf(false) }
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+    // 批量操作条：primaryContainer 淡蓝底 + 24dp 圆角，内部按钮保持胶囊
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        shape = MaterialTheme.shapes.medium
+    ) {
         Column {
             Row(modifier = Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -293,7 +284,12 @@ private fun QuestionCard(
     onToggleSelect: () -> Unit, onToggleExpand: () -> Unit,
     onEdit: () -> Unit, onDelete: () -> Unit, onToggleHide: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onToggleExpand)) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onToggleExpand),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = isSelected, onCheckedChange = { onToggleSelect() })
@@ -327,14 +323,18 @@ private fun QuestionCard(
 @Composable
 private fun EditCard(uiState: BankUiState, viewModel: BankViewModel) {
     val form = uiState.editForm
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))) {
+    // 编辑卡片：secondaryContainer 半透明底 + 24dp 圆角，输入框 16dp 圆角
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
+        shape = MaterialTheme.shapes.medium
+    ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = form.question, onValueChange = { viewModel.updateEditForm(form.copy(question = it)) }, label = { Text("问题") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = form.question, onValueChange = { viewModel.updateEditForm(form.copy(question = it)) }, label = { Text("问题") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = form.category, onValueChange = { viewModel.updateEditForm(form.copy(category = it)) }, label = { Text("分类") }, modifier = Modifier.weight(1f))
-                OutlinedTextField(value = form.difficulty, onValueChange = { viewModel.updateEditForm(form.copy(difficulty = it)) }, label = { Text("难度") }, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = form.category, onValueChange = { viewModel.updateEditForm(form.copy(category = it)) }, label = { Text("分类") }, modifier = Modifier.weight(1f), shape = MaterialTheme.shapes.small)
+                OutlinedTextField(value = form.difficulty, onValueChange = { viewModel.updateEditForm(form.copy(difficulty = it)) }, label = { Text("难度") }, modifier = Modifier.weight(1f), shape = MaterialTheme.shapes.small)
             }
-            OutlinedTextField(value = form.dialog, onValueChange = { viewModel.updateEditForm(form.copy(dialog = it)) }, label = { Text("对话内容") }, modifier = Modifier.fillMaxWidth().height(150.dp), maxLines = Int.MAX_VALUE)
+            OutlinedTextField(value = form.dialog, onValueChange = { viewModel.updateEditForm(form.copy(dialog = it)) }, label = { Text("对话内容") }, modifier = Modifier.fillMaxWidth().height(150.dp), maxLines = Int.MAX_VALUE, shape = MaterialTheme.shapes.small)
 
             // AI 操作
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -347,7 +347,7 @@ private fun EditCard(uiState: BankUiState, viewModel: BankViewModel) {
 
             if (uiState.showSubQuestion) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(value = uiState.subQuestionText, onValueChange = viewModel::setSubQuestionText, placeholder = { Text("输入子问题") }, modifier = Modifier.weight(1f))
+                    OutlinedTextField(value = uiState.subQuestionText, onValueChange = viewModel::setSubQuestionText, placeholder = { Text("输入子问题") }, modifier = Modifier.weight(1f), shape = MaterialTheme.shapes.small)
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = viewModel::handleAppendSub, enabled = !uiState.aiLoading) { Text("生成") }
                 }

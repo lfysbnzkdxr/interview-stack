@@ -2,12 +2,15 @@ package com.example.interviewhelper
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,7 +27,8 @@ class AppNavigationTest {
 
     @Test
     fun 底部导航显示四个页面() {
-        composeRule.onNodeWithText("练题").assertIsDisplayed()
+        // 练题页标题与底部导航标签均为"练题"，存在多个匹配节点，改为至少存在一个
+        assertTrue(composeRule.onAllNodesWithText("练题").fetchSemanticsNodes().isNotEmpty())
         composeRule.onNodeWithText("创建").assertIsDisplayed()
         composeRule.onNodeWithText("题库").assertIsDisplayed()
         composeRule.onNodeWithText("设置").assertIsDisplayed()
@@ -56,8 +60,9 @@ class AppNavigationTest {
         composeRule.onNodeWithText("什么是 AI Agent？它与传统聊天机器人有什么区别？")
             .performClick()
 
-        // 展开后显示操作按钮（编辑/隐藏/删除），避开 Markdown 渲染文本拆分问题
-        composeRule.onNodeWithContentDescription("编辑").assertIsDisplayed()
+        // 展开后显示操作按钮（编辑/隐藏/删除），避开 Markdown 渲染文本拆分问题；
+        // 按钮可能在列表可视区外，先滚动到可见再断言
+        composeRule.onNodeWithContentDescription("编辑").performScrollTo().assertIsDisplayed()
     }
 
     @Test

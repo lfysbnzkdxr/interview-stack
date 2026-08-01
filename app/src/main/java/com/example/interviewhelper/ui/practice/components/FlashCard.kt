@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,9 +31,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.interviewhelper.data.local.QuestionEntity
 import com.example.interviewhelper.ui.common.AppMarkdownText
-import com.example.interviewhelper.ui.theme.DifficultyAdvanced
-import com.example.interviewhelper.ui.theme.DifficultyBeginner
-import com.example.interviewhelper.ui.theme.DifficultyIntermediate
+import com.example.interviewhelper.ui.common.CategoryTag
+import com.example.interviewhelper.ui.common.DifficultyTag
 
 @Composable
 fun FlashCard(
@@ -72,9 +70,10 @@ fun FlashCard(
                     onHorizontalDrag = { _, dragAmount -> totalDragX += dragAmount }
                 )
             },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -160,41 +159,5 @@ private fun CardBack(question: QuestionEntity) {
                 AppMarkdownText(markdown = question.dialog)
             }
         }
-    }
-}
-
-@Composable
-fun DifficultyTag(difficulty: String) {
-    val color = when (difficulty) {
-        "初级" -> DifficultyBeginner
-        "中级" -> DifficultyIntermediate
-        "高级" -> DifficultyAdvanced
-        else -> MaterialTheme.colorScheme.primary
-    }
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = color.copy(alpha = 0.12f)
-    ) {
-        Text(
-            text = difficulty,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = color
-        )
-    }
-}
-
-@Composable
-fun CategoryTag(category: String) {
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.primaryContainer
-    ) {
-        Text(
-            text = category,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
     }
 }

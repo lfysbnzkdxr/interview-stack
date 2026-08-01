@@ -44,6 +44,7 @@ import com.example.interviewhelper.data.model.ImportMode
 import com.example.interviewhelper.data.model.ProviderConfig
 import com.example.interviewhelper.data.model.WebDavFile
 import com.example.interviewhelper.ui.common.ConfirmDialog
+import com.example.interviewhelper.ui.common.PageHeader
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Visibility
@@ -65,34 +66,44 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("设置", style = MaterialTheme.typography.headlineMedium)
+        // HyperOS 风格页头：大标题 + 副标题（自带水平 16dp 内边距）
+        PageHeader(title = "设置", subtitle = "API 提供商、分类与数据管理")
 
-        // API 配置区
-        ApiConfigSection(uiState = uiState, viewModel = viewModel)
+        // 其余内容统一水平 16dp、垂直 8dp 内边距，与页头内容左对齐
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // API 配置区
+            ApiConfigSection(uiState = uiState, viewModel = viewModel)
 
-        HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
-        // 分类管理区
-        CategorySection(uiState = uiState, viewModel = viewModel)
+            // 分类管理区
+            CategorySection(uiState = uiState, viewModel = viewModel)
 
-        HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
-        // 数据管理区
-        DataSection(uiState = uiState, viewModel = viewModel)
+            // 数据管理区
+            DataSection(uiState = uiState, viewModel = viewModel)
 
-        HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
-        // WebDAV 备份区
-        WebDavSection(uiState = uiState, viewModel = viewModel)
+            // WebDAV 备份区
+            WebDavSection(uiState = uiState, viewModel = viewModel)
+        }
     }
 }
 
 @Composable
 private fun ApiConfigSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("API 提供商", style = MaterialTheme.typography.titleMedium)
 
@@ -115,7 +126,7 @@ private fun ApiConfigSection(uiState: SettingsUiState, viewModel: SettingsViewMo
                                 Text(provider.model, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
-                        TextButton(onClick = { viewModel.testProvider(provider.id) }) {
+                        TextButton(onClick = { viewModel.testProvider(provider.id) }, modifier = Modifier.height(48.dp)) {
                             Text(if (uiState.testingProviderId == provider.id) "测试中..." else "测试")
                         }
                     }
@@ -130,13 +141,16 @@ private fun ApiConfigSection(uiState: SettingsUiState, viewModel: SettingsViewMo
                 )
             }
 
-            OutlinedButton(onClick = { viewModel.showAddProvider() }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { viewModel.showAddProvider() }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
                 Text("+ 添加提供商")
             }
 
             // 添加提供商表单
             if (uiState.showAddProviderForm) {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                Card(
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)
+                ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         // 预设快捷选择
                         var presetMenuExpanded by remember { mutableStateOf(false) }
@@ -154,10 +168,10 @@ private fun ApiConfigSection(uiState: SettingsUiState, viewModel: SettingsViewMo
                                 )
                             }
                         }
-                        OutlinedTextField(value = uiState.newProviderName, onValueChange = viewModel::setNewProviderName, label = { Text("名称") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = uiState.newProviderUrl, onValueChange = viewModel::setNewProviderUrl, label = { Text("Base URL") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = uiState.newProviderKey, onValueChange = viewModel::setNewProviderKey, label = { Text("API Key") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
-                        OutlinedTextField(value = uiState.newProviderModel, onValueChange = viewModel::setNewProviderModel, label = { Text("模型") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = uiState.newProviderName, onValueChange = viewModel::setNewProviderName, label = { Text("名称") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
+                        OutlinedTextField(value = uiState.newProviderUrl, onValueChange = viewModel::setNewProviderUrl, label = { Text("Base URL") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
+                        OutlinedTextField(value = uiState.newProviderKey, onValueChange = viewModel::setNewProviderKey, label = { Text("API Key") }, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), shape = MaterialTheme.shapes.small)
+                        OutlinedTextField(value = uiState.newProviderModel, onValueChange = viewModel::setNewProviderModel, label = { Text("模型") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
                         Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                             TextButton(onClick = { viewModel.hideAddProvider() }) { Text("取消") }
                             Spacer(Modifier.width(8.dp))
@@ -174,7 +188,12 @@ private fun ApiConfigSection(uiState: SettingsUiState, viewModel: SettingsViewMo
 private fun CategorySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     var newCatName by remember { mutableStateOf("") }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("分类管理", style = MaterialTheme.typography.titleMedium)
 
@@ -199,7 +218,8 @@ private fun CategorySection(uiState: SettingsUiState, viewModel: SettingsViewMod
                     onValueChange = { newCatName = it },
                     placeholder = { Text("新分类名称") },
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.small
                 )
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = { viewModel.addCategory(newCatName); newCatName = "" }) { Text("添加") }
@@ -225,7 +245,12 @@ private fun DataSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
         uri?.let { pendingImportUri = it }
     }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("数据管理", style = MaterialTheme.typography.titleMedium)
 
@@ -234,19 +259,19 @@ private fun DataSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
                     val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault()).format(Date())
                     exportLauncher.launch("interview-backup-$timestamp.json")
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Text("导出全部数据")
             }
             OutlinedButton(
                 onClick = { importLauncher.launch(arrayOf("application/json")) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Text("从文件导入")
             }
             OutlinedButton(
                 onClick = { showResetDialog = true },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Text("恢复默认题库", color = MaterialTheme.colorScheme.error)
             }
@@ -295,12 +320,17 @@ private fun WebDavSection(uiState: SettingsUiState, viewModel: SettingsViewModel
     var showPassword by remember { mutableStateOf(false) }
     var selectedBackupFile by remember { mutableStateOf<WebDavFile?>(null) }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("WebDAV 备份", style = MaterialTheme.typography.titleMedium)
 
-            OutlinedTextField(value = uiState.webDavUrl, onValueChange = viewModel::setWebDavUrl, label = { Text("服务器地址") }, placeholder = { Text("https://nextcloud.example.com/remote.php/dav/files/user/") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = uiState.webDavUsername, onValueChange = viewModel::setWebDavUsername, label = { Text("用户名") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = uiState.webDavUrl, onValueChange = viewModel::setWebDavUrl, label = { Text("服务器地址") }, placeholder = { Text("https://nextcloud.example.com/remote.php/dav/files/user/") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
+            OutlinedTextField(value = uiState.webDavUsername, onValueChange = viewModel::setWebDavUsername, label = { Text("用户名") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
             OutlinedTextField(
                 value = uiState.webDavPassword, onValueChange = viewModel::setWebDavPassword, label = { Text("密码") },
                 modifier = Modifier.fillMaxWidth(),
@@ -309,31 +339,32 @@ private fun WebDavSection(uiState: SettingsUiState, viewModel: SettingsViewModel
                     IconButton(onClick = { showPassword = !showPassword }) {
                         Icon(if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility, "切换密码可见")
                     }
-                }
+                },
+                shape = MaterialTheme.shapes.small
             )
-            OutlinedTextField(value = uiState.webDavPath, onValueChange = viewModel::setWebDavPath, label = { Text("备份路径") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = uiState.webDavPath, onValueChange = viewModel::setWebDavPath, label = { Text("备份路径") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { viewModel.testWebDav() }, enabled = !uiState.webDavTesting) {
+                OutlinedButton(onClick = { viewModel.testWebDav() }, enabled = !uiState.webDavTesting, modifier = Modifier.height(48.dp)) {
                     if (uiState.webDavTesting) CircularProgressIndicator(Modifier.height(16.dp).width(16.dp))
                     else Text("测试连接")
                 }
-                Button(onClick = { viewModel.saveWebDavConfig() }) { Text("保存配置") }
+                Button(onClick = { viewModel.saveWebDavConfig() }, modifier = Modifier.height(48.dp)) { Text("保存配置") }
             }
 
             uiState.webDavMessage?.let { msg ->
                 Text(msg, style = MaterialTheme.typography.bodySmall, color = if (msg.contains("成功")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
             }
 
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
             // 手动备份恢复
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { viewModel.backupNow() }, enabled = !uiState.webDavBackingUp) {
+                OutlinedButton(onClick = { viewModel.backupNow() }, enabled = !uiState.webDavBackingUp, modifier = Modifier.height(48.dp)) {
                     if (uiState.webDavBackingUp) CircularProgressIndicator(Modifier.height(16.dp).width(16.dp))
                     else Text("立即备份")
                 }
-                OutlinedButton(onClick = { viewModel.loadWebDavBackups() }, enabled = !uiState.webDavRestoring) {
+                OutlinedButton(onClick = { viewModel.loadWebDavBackups() }, enabled = !uiState.webDavRestoring, modifier = Modifier.height(48.dp)) {
                     if (uiState.webDavRestoring) CircularProgressIndicator(Modifier.height(16.dp).width(16.dp))
                     else Text("从 WebDAV 恢复")
                 }
