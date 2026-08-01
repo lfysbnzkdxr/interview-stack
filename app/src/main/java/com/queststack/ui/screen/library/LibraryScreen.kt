@@ -55,7 +55,6 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.GridView
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -316,15 +315,7 @@ private fun QuestionCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // TODO: 下一里程碑接入编辑页
-                IconButton(onClick = { /* TODO: 编辑题目 */ }) {
-                    Icon(
-                        imageVector = MiuixIcons.Edit,
-                        contentDescription = "编辑",
-                        tint = MiuixTheme.colorScheme.onBackgroundVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+                // TODO: 编辑功能（下一里程碑）
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = MiuixIcons.Delete,

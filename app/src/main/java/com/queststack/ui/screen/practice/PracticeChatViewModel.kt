@@ -4,12 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.queststack.data.DataContainer
 import com.queststack.data.db.QuestionWithRounds
-import com.queststack.data.repository.CategoryRepository
 import com.queststack.data.repository.QuestionRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class ChatUiState(
@@ -30,20 +31,23 @@ data class ChatUiState(
 class PracticeChatViewModel(
     questionId: Long,
     private val questionRepository: QuestionRepository = DataContainer.questionRepository,
-    categoryRepository: CategoryRepository = DataContainer.categoryRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState(currentId = questionId))
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+
+    private var loadJob: Job? = null
 
     init {
         load(questionId)
     }
 
     private fun load(id: Long) {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update { it.copy(loading = true) }
             val question = questionRepository.getQuestion(id)
+            if (!isActive) return@launch
             _uiState.update {
                 it.copy(
                     question = question,

@@ -1,6 +1,7 @@
 package com.queststack.data
 
 import android.content.Context
+import android.util.Log
 import com.queststack.ai.AiClient
 import com.queststack.data.backup.BackupRepository
 import com.queststack.data.backup.WebDavClient
@@ -11,8 +12,10 @@ import com.queststack.data.repository.QuestionRepository
 import com.queststack.data.repository.QuestionRepositoryImpl
 import com.queststack.data.repository.SettingsRepository
 import com.queststack.ui.theme.AppSettings
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -33,11 +36,20 @@ object DataContainer {
     lateinit var webDavClient: WebDavClient
         private set
 
-    private val okHttpClient = OkHttpClient()
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .build()
+
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e ->
+            Log.e("DataContainer", "Settings collect failed", e)
+        }
+    )
 
     fun init(context: Context) {
         database = AppDatabase.getInstance(context)
-        questionRepository = QuestionRepositoryImpl(database.questionDao(), database.roundDao())
+        questionRepository = QuestionRepositoryImpl(database, database.questionDao(), database.roundDao())
         categoryRepository = CategoryRepositoryImpl(database.categoryDao())
         settingsRepository = SettingsRepository(context)
         aiClient = AiClient(okHttpClient)
@@ -48,7 +60,7 @@ object DataContainer {
                 .readTimeout(60, TimeUnit.SECONDS)
                 .build()
         )
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             settingsRepository.themeMode.collect { AppSettings.themeMode = it }
         }
     }

@@ -1,7 +1,6 @@
 package com.queststack.data.db
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
@@ -16,9 +15,6 @@ interface QuestionDao {
     @Update
     suspend fun update(question: Question)
 
-    @Delete
-    suspend fun delete(question: Question)
-
     @Transaction
     @Query("SELECT * FROM questions ORDER BY updatedAt DESC")
     fun observeAllWithRounds(): Flow<List<QuestionWithRounds>>
@@ -31,8 +27,8 @@ interface QuestionDao {
     @Query("SELECT * FROM questions WHERE id = :id")
     suspend fun getWithRounds(id: Long): QuestionWithRounds?
 
-    @Query("SELECT COUNT(*) FROM questions")
-    suspend fun count(): Int
+    @Query("DELETE FROM questions WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
     @Query("SELECT id FROM questions WHERE (:categoryId IS NULL OR categoryId = :categoryId) AND (:difficulty IS NULL OR difficulty = :difficulty)")
     suspend fun getIds(categoryId: Long?, difficulty: Int?): List<Long>

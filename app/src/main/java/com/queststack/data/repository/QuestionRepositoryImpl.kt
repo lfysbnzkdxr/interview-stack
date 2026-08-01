@@ -1,5 +1,7 @@
 package com.queststack.data.repository
 
+import androidx.room.withTransaction
+import com.queststack.data.db.AppDatabase
 import com.queststack.data.db.Question
 import com.queststack.data.db.QuestionDao
 import com.queststack.data.db.QuestionWithRounds
@@ -8,6 +10,7 @@ import com.queststack.data.db.RoundDao
 import kotlinx.coroutines.flow.Flow
 
 class QuestionRepositoryImpl(
+    private val database: AppDatabase,
     private val questionDao: QuestionDao,
     private val roundDao: RoundDao
 ) : QuestionRepository {
@@ -23,7 +26,7 @@ class QuestionRepositoryImpl(
         categoryId: Long?,
         difficulty: Int,
         rounds: List<Pair<String, String>>
-    ): Long {
+    ): Long = database.withTransaction {
         val now = System.currentTimeMillis()
         val question = Question(
             title = title,
@@ -40,18 +43,22 @@ class QuestionRepositoryImpl(
             }
         }
         roundDao.insertAll(allRounds)
-        return questionId
+        questionId
     }
 
     override suspend fun updateQuestion(question: Question, rounds: List<Round>) {
-        roundDao.deleteByQuestionId(question.id)
-        roundDao.insertAll(rounds)
-        questionDao.update(question.copy(updatedAt = System.currentTimeMillis()))
+        database.withTransaction {
+            roundDao.deleteByQuestionId(question.id)
+            roundDao.insertAll(rounds)
+            questionDao.update(question.copy(updatedAt = System.currentTimeMillis()))
+        }
     }
 
     override suspend fun deleteQuestion(id: Long) {
-        roundDao.deleteByQuestionId(id)
-        questionDao.delete(Question(id = id, title = "", categoryId = null, difficulty = 1, createdAt = 0, updatedAt = 0))
+        database.withTransaction {
+            roundDao.deleteByQuestionId(id)
+            questionDao.deleteById(id)
+        }
     }
 
     override suspend fun randomQuestionIds(categoryId: Long?, difficulty: Int?): List<Long> =

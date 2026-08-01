@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.queststack.data.SecureStorage
 import com.queststack.data.backup.WebDavConfig
 import com.queststack.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +30,7 @@ class SettingsRepository(context: Context) {
     val aiConfig: Flow<AiConfig> = dataStore.data.map { prefs ->
         AiConfig(
             baseUrl = prefs[KEY_BASE_URL] ?: "",
-            apiKey = prefs[KEY_API_KEY] ?: "",
+            apiKey = SecureStorage.decrypt(prefs[KEY_API_KEY] ?: ""),
             model = prefs[KEY_MODEL] ?: "",
             timeoutSeconds = prefs[KEY_TIMEOUT_SECONDS] ?: 30
         )
@@ -47,7 +48,7 @@ class SettingsRepository(context: Context) {
     suspend fun setAiConfig(config: AiConfig) {
         dataStore.edit { prefs ->
             prefs[KEY_BASE_URL] = config.baseUrl
-            prefs[KEY_API_KEY] = config.apiKey
+            prefs[KEY_API_KEY] = SecureStorage.encrypt(config.apiKey)
             prefs[KEY_MODEL] = config.model
             prefs[KEY_TIMEOUT_SECONDS] = config.timeoutSeconds
         }
@@ -68,7 +69,7 @@ class SettingsRepository(context: Context) {
         WebDavConfig(
             url = prefs[KEY_WEBDAV_URL] ?: "",
             username = prefs[KEY_WEBDAV_USERNAME] ?: "",
-            password = prefs[KEY_WEBDAV_PASSWORD] ?: ""
+            password = SecureStorage.decrypt(prefs[KEY_WEBDAV_PASSWORD] ?: "")
         )
     }
 
@@ -76,7 +77,7 @@ class SettingsRepository(context: Context) {
         dataStore.edit { prefs ->
             prefs[KEY_WEBDAV_URL] = config.url
             prefs[KEY_WEBDAV_USERNAME] = config.username
-            prefs[KEY_WEBDAV_PASSWORD] = config.password
+            prefs[KEY_WEBDAV_PASSWORD] = SecureStorage.encrypt(config.password)
         }
     }
 

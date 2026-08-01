@@ -128,7 +128,8 @@ class AddViewModel(
             withContext(Dispatchers.IO) {
                 try {
                     val rounds = aiClient.generateQuestionChain(
-                        config.baseUrl, config.apiKey, config.model, current.title
+                        config.baseUrl, config.apiKey, config.model, current.title,
+                        timeoutSeconds = config.timeoutSeconds,
                     )
                     _uiState.update {
                         it.copy(
@@ -160,7 +161,8 @@ class AddViewModel(
             withContext(Dispatchers.IO) {
                 try {
                     val optimized = aiClient.optimizeAnswer(
-                        config.baseUrl, config.apiKey, config.model, current.title, current.answer
+                        config.baseUrl, config.apiKey, config.model, current.title, current.answer,
+                        timeoutSeconds = config.timeoutSeconds,
                     )
                     _uiState.update {
                         it.copy(
@@ -192,7 +194,8 @@ class AddViewModel(
             withContext(Dispatchers.IO) {
                 try {
                     val rounds = aiClient.formatAnswer(
-                        config.baseUrl, config.apiKey, config.model, current.title, current.answer
+                        config.baseUrl, config.apiKey, config.model, current.title, current.answer,
+                        timeoutSeconds = config.timeoutSeconds,
                     )
                     _uiState.update {
                         it.copy(

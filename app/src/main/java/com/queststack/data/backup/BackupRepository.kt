@@ -23,6 +23,7 @@ class BackupRepository(
     private val json = Json {
         prettyPrint = true
         encodeDefaults = true
+        ignoreUnknownKeys = true
     }
 
     /** 导出全部数据为 JSON 字符串 */
@@ -59,6 +60,10 @@ class BackupRepository(
             throw IllegalArgumentException("备份文件格式不正确")
         } catch (e: IllegalArgumentException) {
             throw IllegalArgumentException("备份文件格式不正确")
+        }
+
+        if (backupFile.version > CURRENT_BACKUP_VERSION) {
+            throw IllegalArgumentException("备份文件版本过高（v${backupFile.version}），当前应用支持 v$CURRENT_BACKUP_VERSION，请升级应用后重试")
         }
 
         // 分类：按名匹配，不存在则新建
@@ -118,6 +123,7 @@ class BackupRepository(
         return importedCount
     }
 
-    /** 导出的 JSON 字节数，供 UI 展示 */
-    suspend fun exportFileSizeHint(): Int = exportToJson().toByteArray().size
+    companion object {
+        const val CURRENT_BACKUP_VERSION = 1
+    }
 }
