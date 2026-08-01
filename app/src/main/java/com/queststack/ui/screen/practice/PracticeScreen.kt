@@ -41,7 +41,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.queststack.data.db.Category
 import com.queststack.data.db.QuestionWithRounds
-import com.queststack.ui.component.GlassTopAppBar
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -78,26 +77,14 @@ fun PracticeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 顶栏由本页自绘（带"换一题"操作），TabPage 对练题 tab 不再渲染默认顶栏
-        GlassTopAppBar(
-            title = "练题",
-            actions = {
-                IconButton(onClick = viewModel::shuffle) {
-                    Icon(
-                        imageVector = MiuixIcons.Refresh,
-                        contentDescription = "换一题",
-                        tint = MiuixTheme.colorScheme.onBackgroundVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            },
-        )
+        // 顶栏由 MainScreen 的 Scaffold topBar 槽位统一渲染（标题"练题"），本页不再自绘
         PracticeFilterBar(
             categories = uiState.categories,
             selectedCategoryId = uiState.selectedCategoryId,
             difficulty = uiState.difficulty,
             onSelectCategory = viewModel::selectCategory,
             onSelectDifficulty = viewModel::selectDifficulty,
+            onShuffle = viewModel::shuffle,
         )
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -118,7 +105,7 @@ fun PracticeScreen(
     }
 }
 
-/** 筛选栏：分类下拉（全部 + 各分类）+ 难度四档 chips */
+/** 筛选栏：分类下拉（全部 + 各分类）+ 难度四档 chips + 右侧"换一题" */
 @Composable
 private fun PracticeFilterBar(
     categories: List<Category>,
@@ -126,6 +113,7 @@ private fun PracticeFilterBar(
     difficulty: Int?,
     onSelectCategory: (Long?) -> Unit,
     onSelectDifficulty: (Int?) -> Unit,
+    onShuffle: () -> Unit,
 ) {
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var categoryButtonHeight by remember { mutableIntStateOf(0) }
@@ -176,12 +164,25 @@ private fun PracticeFilterBar(
                 }
             }
         }
-        // 难度筛选 chips（null = 全部）
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DifficultyChip("全部", selected = difficulty == null, onClick = { onSelectDifficulty(null) })
-            DifficultyChip("简单", selected = difficulty == 1, onClick = { onSelectDifficulty(1) })
-            DifficultyChip("中等", selected = difficulty == 2, onClick = { onSelectDifficulty(2) })
-            DifficultyChip("困难", selected = difficulty == 3, onClick = { onSelectDifficulty(3) })
+        // 难度筛选 chips（null = 全部）+ 右侧"换一题"
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                DifficultyChip("全部", selected = difficulty == null, onClick = { onSelectDifficulty(null) })
+                DifficultyChip("简单", selected = difficulty == 1, onClick = { onSelectDifficulty(1) })
+                DifficultyChip("中等", selected = difficulty == 2, onClick = { onSelectDifficulty(2) })
+                DifficultyChip("困难", selected = difficulty == 3, onClick = { onSelectDifficulty(3) })
+            }
+            IconButton(onClick = onShuffle) {
+                Icon(
+                    imageVector = MiuixIcons.Refresh,
+                    contentDescription = "换一题",
+                    tint = MiuixTheme.colorScheme.onBackgroundVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }

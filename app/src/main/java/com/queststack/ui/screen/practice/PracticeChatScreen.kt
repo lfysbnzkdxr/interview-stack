@@ -31,11 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.queststack.ui.component.GlassTopAppBar
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.ChevronBackward
@@ -85,8 +85,9 @@ fun PracticeChatScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        GlassTopAppBar(
+        SmallTopAppBar(
             title = question?.question?.title ?: "答题",
+            color = MiuixTheme.colorScheme.surface,
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(

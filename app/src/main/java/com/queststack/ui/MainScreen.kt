@@ -1,7 +1,6 @@
 package com.queststack.ui
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -74,6 +73,14 @@ fun MainScreen() {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MiuixTheme.colorScheme.background,
+            topBar = {
+                if (isTabRoute) {
+                    // 顶栏渲染在 Scaffold topBar 槽位，与 backdrop 采集层（content 区）互为兄弟，
+                    // 避免玻璃顶栏在采集节点后代内采样 backdrop 形成循环采样（RenderThread SIGSEGV 根因）
+                    val title = MainTab.entries.firstOrNull { it.route == currentRoute }?.label ?: ""
+                    GlassTopAppBar(title = title)
+                }
+            },
             bottomBar = {
                 if (isTabRoute) {
                     GlassNavigationBar(
@@ -103,8 +110,11 @@ fun MainScreen() {
                     startDestination = MainTab.Practice.route,
                     modifier = Modifier.padding(
                         PaddingValues(
-                            // 顶部不预留 inset：玻璃顶栏自行处理状态栏区域（edge-to-edge）
-                            top = 0.dp,
+                            // tab 路由：Scaffold content padding 的 top 即顶栏实际高度（含状态栏 inset，
+                            // SmallTopAppBar 默认自处理），直接沿用，内容从顶栏下方开始；
+                            // 子路由（practice_chat）：topBar 槽位为空，padding top 为状态栏 inset，
+                            // 但 chat 页自绘 edge-to-edge 纯色顶栏，此处不再预留，保持 top=0
+                            top = if (isTabRoute) padding.calculateTopPadding() else 0.dp,
                             // 底部预留悬浮底栏高度（含悬浮间距，避免内容被遮挡）；
                             // 子路由时 bottomBar 为空，Scaffold 仅保留系统导航栏 inset
                             bottom = padding.calculateBottomPadding(),
@@ -114,28 +124,24 @@ fun MainScreen() {
                     ),
                 ) {
                     composable(MainTab.Practice.route) {
-                        TabPage(MainTab.Practice, topBar = {}) {
-                            PracticeScreen(
-                                onStart = { questionId ->
-                                    navController.navigate("practice_chat/$questionId")
-                                },
-                            )
-                        }
+                        PracticeScreen(
+                            onStart = { questionId ->
+                                navController.navigate("practice_chat/$questionId")
+                            },
+                        )
                     }
                     composable(MainTab.Library.route) {
-                        TabPage(MainTab.Library) {
-                            LibraryScreen(
-                                onQuestionClick = { questionId ->
-                                    navController.navigate("practice_chat/$questionId")
-                                },
-                            )
-                        }
+                        LibraryScreen(
+                            onQuestionClick = { questionId ->
+                                navController.navigate("practice_chat/$questionId")
+                            },
+                        )
                     }
                     composable(MainTab.Add.route) {
-                        TabPage(MainTab.Add) { AddScreen() }
+                        AddScreen()
                     }
                     composable(MainTab.Settings.route) {
-                        TabPage(MainTab.Settings, topBar = {}) { SettingsScreen() }
+                        SettingsScreen()
                     }
                     composable(
                         route = "practice_chat/{questionId}",
@@ -150,18 +156,5 @@ fun MainScreen() {
                 }
             }
         }
-    }
-}
-
-/** 单个 tab 页面：玻璃顶栏 + 内容（练题 tab 顶栏由页面自绘，可传空 topBar） */
-@Composable
-private fun TabPage(
-    tab: MainTab,
-    topBar: @Composable () -> Unit = { GlassTopAppBar(title = tab.label) },
-    content: @Composable () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        topBar()
-        content()
     }
 }

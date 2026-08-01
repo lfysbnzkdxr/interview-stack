@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,34 +28,25 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.dropShadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.shadow.Shadow
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.queststack.data.backup.WebDavConfig
 import com.queststack.data.db.Category
 import com.queststack.data.repository.AiConfig
-import com.queststack.ui.component.GlassTopAppBar
 import com.queststack.ui.theme.AppSettings
 import com.queststack.ui.theme.ThemeMode
 import java.time.LocalDate
@@ -70,10 +60,8 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Edit
-import top.yukonga.miuix.kmp.icon.extended.Tune
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /** 本地导出文件名：quest-stack-backup-YYYYMMDD.json */
@@ -119,11 +107,6 @@ fun SettingsScreen(
         webDavPassState.edit { replace(0, length, uiState.webDavConfig.password) }
     }
 
-    // 顶栏主题切换弹层
-    var themeMenuExpanded by remember { mutableStateOf(false) }
-    var themeButtonHeight by remember { mutableIntStateOf(0) }
-    val density = LocalDensity.current
-
     // SAF：导出 / 导入
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json"),
@@ -138,44 +121,28 @@ fun SettingsScreen(
     var deleteTarget by remember { mutableStateOf<Category?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        GlassTopAppBar(
-            title = "设置",
-            actions = {
-                Box(modifier = Modifier.onSizeChanged { themeButtonHeight = it.height }) {
-                    IconButton(onClick = { themeMenuExpanded = true }) {
-                        Icon(
-                            imageVector = MiuixIcons.Tune,
-                            contentDescription = "主题",
-                            tint = MiuixTheme.colorScheme.onBackground,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    if (themeMenuExpanded) {
-                        Popup(
-                            alignment = Alignment.TopEnd,
-                            offset = IntOffset(0, themeButtonHeight + with(density) { 6.dp.roundToPx() }),
-                            onDismissRequest = { themeMenuExpanded = false },
-                            properties = PopupProperties(focusable = true),
-                        ) {
-                            ThemeMenuPanel(
-                                current = AppSettings.themeMode,
-                                onSelect = { mode ->
-                                    viewModel.setThemeMode(mode)
-                                    themeMenuExpanded = false
-                                },
-                            )
-                        }
-                    }
-                }
-            },
-        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            // 1. AI 配置
+            // 1. 外观（顶栏主题切换已移入内容区）
+            SettingsSectionCard("外观") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AppThemeChip("跟随系统", ThemeMode.System, AppSettings.themeMode) {
+                        viewModel.setThemeMode(ThemeMode.System)
+                    }
+                    AppThemeChip("浅色", ThemeMode.Light, AppSettings.themeMode) {
+                        viewModel.setThemeMode(ThemeMode.Light)
+                    }
+                    AppThemeChip("深色", ThemeMode.Dark, AppSettings.themeMode) {
+                        viewModel.setThemeMode(ThemeMode.Dark)
+                    }
+                }
+            }
+
+            // 2. AI 配置
             SettingsSectionCard("AI 接口") {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     TextField(
@@ -246,7 +213,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 2. 分类管理
+            // 3. 分类管理
             SettingsSectionCard("分类管理") {
                 if (uiState.categories.isEmpty()) {
                     Text(
@@ -304,7 +271,7 @@ fun SettingsScreen(
                 )
             }
 
-            // 3. 数据备份
+            // 4. 数据备份
             SettingsSectionCard("数据备份") {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
@@ -413,7 +380,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 4. 关于
+            // 5. 关于
             SettingsSectionCard("关于") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -513,59 +480,27 @@ private fun DividerLine() {
     )
 }
 
-/** 顶栏主题切换下拉面板（自绘 Popup，当前项打勾） */
+/** 外观主题三选一 chip：当前主题高亮 */
 @Composable
-private fun ThemeMenuPanel(
-    current: ThemeMode,
-    onSelect: (ThemeMode) -> Unit,
-) {
-    Card(
+private fun AppThemeChip(label: String, mode: ThemeMode, current: ThemeMode, onClick: () -> Unit) {
+    val selected = mode == current
+    Box(
         modifier = Modifier
-            .widthIn(min = 160.dp, max = 240.dp)
-            .dropShadow(
-                shape = RoundedCornerShape(16.dp),
-                shadow = Shadow(radius = 12.dp, color = Color.Black, alpha = 0.15f),
-            ),
-        cornerRadius = 16.dp,
-        insideMargin = PaddingValues(0.dp),
-    ) {
-        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-            ThemeMenuRow("跟随系统", ThemeMode.System, current, onSelect)
-            ThemeMenuRow("浅色", ThemeMode.Light, current, onSelect)
-            ThemeMenuRow("深色", ThemeMode.Dark, current, onSelect)
-        }
-    }
-}
-
-@Composable
-private fun ThemeMenuRow(
-    text: String,
-    mode: ThemeMode,
-    current: ThemeMode,
-    onSelect: (ThemeMode) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onSelect(mode) }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .clip(RoundedCornerShape(percent = 50))
+            .background(
+                if (selected) MiuixTheme.colorScheme.primary
+                else MiuixTheme.colorScheme.surfaceContainer,
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
     ) {
         Text(
-            text = text,
-            fontSize = 15.sp,
-            color = if (mode == current) MiuixTheme.colorScheme.primary
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            color = if (selected) MiuixTheme.colorScheme.onPrimary
             else MiuixTheme.colorScheme.onSurfaceContainer,
-            modifier = Modifier.weight(1f),
         )
-        if (mode == current) {
-            Icon(
-                imageVector = MiuixIcons.Basic.Check,
-                contentDescription = null,
-                tint = MiuixTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
-            )
-        }
     }
 }
 
