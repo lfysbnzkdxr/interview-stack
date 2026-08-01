@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.Properties
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 
 plugins {
     alias(libs.plugins.android.application)
@@ -8,6 +9,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    id("jacoco")
 }
 
 android {
@@ -84,6 +86,7 @@ android {
     testOptions {
         unitTests.all {
             it.useJUnitPlatform()
+            it.configure<JacocoTaskExtension> { } // 启用 JaCoCo agent，产出覆盖率 .exec 文件
         }
         unitTests.isReturnDefaultValues = true
     }
@@ -168,4 +171,41 @@ dependencies {
     androidTestImplementation(libs.mockk.android)
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
+}
+
+// JaCoCo 单元测试覆盖率报告：./gradlew jacocoTestReport
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+    // 排除生成代码与纯配置代码，聚焦业务逻辑
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R\$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "android/**/*.*",
+        "**/Hilt_*.class",
+        "**/*_Factory.class",
+        "**/*_Impl.class",
+        "**/*_HiltModules*.*",
+        "**/di/**",
+        "**/data/model/**",
+        "**/domain/**",
+        "**/ui/theme/**"
+    )
+    val debugTree = fileTree(project.layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile) {
+        exclude(fileFilter)
+    }
+    sourceDirectories.setFrom(files(project.projectDir.resolve("src/main/java")))
+    classDirectories.setFrom(debugTree)
+    executionData.setFrom(
+        fileTree(project.layout.buildDirectory.dir("jacoco").get().asFile) {
+            include("*.exec")
+        }
+    )
 }
