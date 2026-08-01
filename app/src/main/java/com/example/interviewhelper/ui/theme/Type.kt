@@ -7,25 +7,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 val Typography = Typography(
+    // 按 HyperOS 14 级字号表映射：headlineMedium 为 title1 级（32sp）
     headlineMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
         letterSpacing = 0.sp
     ),
+    // 页面大标题（24sp SemiBold）
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
         letterSpacing = 0.sp
     ),
+    // title4 级（18sp）
     titleMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
+        fontSize = 18.sp,
+        lineHeight = 26.sp,
         letterSpacing = 0.15.sp
     ),
     titleSmall = TextStyle(
@@ -52,8 +55,8 @@ val Typography = Typography(
     bodySmall = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
         letterSpacing = 0.4.sp
     ),
     labelLarge = TextStyle(
