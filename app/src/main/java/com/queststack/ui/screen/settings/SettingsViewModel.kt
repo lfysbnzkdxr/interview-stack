@@ -1,0 +1,275 @@
+package com.queststack.ui.screen.settings
+
+import android.app.Application
+import android.net.Uri
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.queststack.data.DataContainer
+import com.queststack.data.backup.BackupRepository
+import com.queststack.data.backup.WebDavClient
+import com.queststack.data.backup.WebDavConfig
+import com.queststack.data.db.Category
+import com.queststack.data.repository.AiConfig
+import com.queststack.data.repository.CategoryRepository
+import com.queststack.data.repository.SettingsRepository
+import com.queststack.ui.theme.AppSettings
+import com.queststack.ui.theme.ThemeMode
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+data class SettingsUiState(
+    val aiConfig: AiConfig = AiConfig(),
+    val webDavConfig: WebDavConfig = WebDavConfig(),
+    val categories: List<Category> = emptyList(),
+    /** 是否正在进行备份/恢复类操作（禁用相关按钮） */
+    val busy: Boolean = false,
+    /** 当前忙碌操作标识（用于按钮上显示"处理中…"） */
+    val busyAction: String? = null,
+    /** 统一提示文案（成功 / 错误），由 UI 弹出 Toast 后消费 */
+    val message: String? = null,
+)
+
+/**
+ * 设置页 ViewModel。
+ *
+ * 备份/恢复类操作在 viewModelScope + Dispatchers.IO 中执行，
+ * 结果与错误统一写入 [SettingsUiState.message]，由 UI 层 Toast 提示；
+ * 分类删除时仓库抛出的 IllegalStateException（"分类下还有题目"）也在此捕获。
+ */
+class SettingsViewModel(
+    private val settingsRepository: SettingsRepository = DataContainer.settingsRepository,
+    private val categoryRepository: CategoryRepository = DataContainer.categoryRepository,
+    private val backupRepository: BackupRepository = DataContainer.backupRepository,
+    private val webDavClient: WebDavClient = DataContainer.webDavClient,
+    application: Application,
+) : AndroidViewModel(application) {
+
+    /**
+     * 供 AndroidViewModelFactory 反射构造（其仅支持"单一 Application 参数"的构造函数）；
+     * 其余依赖均使用 DataContainer 默认实现。
+     */
+    constructor(application: Application) : this(
+        settingsRepository = DataContainer.settingsRepository,
+        categoryRepository = DataContainer.categoryRepository,
+        backupRepository = DataContainer.backupRepository,
+        webDavClient = DataContainer.webDavClient,
+        application = application,
+    )
+
+    private val _uiState = MutableStateFlow(SettingsUiState())
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            combine(
+                settingsRepository.aiConfig,
+                settingsRepository.webDavConfig,
+                categoryRepository.observeCategories(),
+            ) { aiConfig, webDavConfig, categories -> Triple(aiConfig, webDavConfig, categories) }
+                .collect { (aiConfig, webDavConfig, categories) ->
+                    _uiState.update {
+                        it.copy(aiConfig = aiConfig, webDavConfig = webDavConfig, categories = categories)
+                    }
+                }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 主题
+    // ------------------------------------------------------------------
+
+    /** 切换主题：立即生效（AppSettings 为全局 mutableStateOf），并持久化到 DataStore */
+    fun setThemeMode(mode: ThemeMode) {
+        if (mode == AppSettings.themeMode) return
+        AppSettings.themeMode = mode
+        viewModelScope.launch {
+            settingsRepository.setThemeMode(mode)
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // AI 配置 / WebDAV 配置
+    // ------------------------------------------------------------------
+
+    fun saveAiConfig(config: AiConfig) {
+        viewModelScope.launch {
+            settingsRepository.setAiConfig(config)
+        }
+    }
+
+    fun saveWebDavConfig(config: WebDavConfig) {
+        viewModelScope.launch {
+            settingsRepository.setWebDavConfig(config)
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 分类管理
+    // ------------------------------------------------------------------
+
+    fun addCategory(name: String) {
+        viewModelScope.launch {
+            categoryRepository.addCategory(name.trim())
+        }
+    }
+
+    fun renameCategory(category: Category, newName: String) {
+        viewModelScope.launch {
+            categoryRepository.renameCategory(category, newName.trim())
+        }
+    }
+
+    /** 删除分类；分类下还有题目时仓库抛 IllegalStateException，捕获后经 message 提示 */
+    fun deleteCategory(category: Category) {
+        viewModelScope.launch {
+            try {
+                categoryRepository.deleteCategory(category)
+            } catch (e: IllegalStateException) {
+                _uiState.update { it.copy(message = e.message ?: "删除失败") }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 本地备份（SAF）
+    // ------------------------------------------------------------------
+
+    /** 导出到用户通过 SAF 选择的文件；成功提示字节数（KB） */
+    fun exportLocal(uri: Uri) {
+        if (_uiState.value.busy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, busyAction = "local_export", message = null) }
+            try {
+                val bytes = withContext(Dispatchers.IO) { backupRepository.exportToJson().toByteArray() }
+                val resolver = getApplication<Application>().contentResolver
+                withContext(Dispatchers.IO) {
+                    val output = resolver.openOutputStream(uri) ?: throw IOException("无法写入所选文件")
+                    output.use { it.write(bytes) }
+                }
+                _uiState.update {
+                    it.copy(busy = false, busyAction = null, message = "已导出（${bytes.size / 1024} KB）")
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(busy = false, busyAction = null, message = "导出失败：${e.message ?: "未知错误"}")
+                }
+            }
+        }
+    }
+
+    /** 从用户通过 SAF 选择的文件导入；成功提示新增题目数 */
+    fun importLocal(uri: Uri) {
+        if (_uiState.value.busy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, busyAction = "local_import", message = null) }
+            try {
+                val resolver = getApplication<Application>().contentResolver
+                val text = withContext(Dispatchers.IO) {
+                    val input = resolver.openInputStream(uri) ?: throw IOException("无法读取所选文件")
+                    input.use { it.readBytes().toString(Charsets.UTF_8) }
+                }
+                val count = withContext(Dispatchers.IO) { backupRepository.importFromJson(text) }
+                _uiState.update {
+                    it.copy(busy = false, busyAction = null, message = "导入成功，新增 $count 题")
+                }
+            } catch (e: IllegalArgumentException) {
+                _uiState.update { it.copy(busy = false, busyAction = null, message = "备份文件格式不正确") }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(busy = false, busyAction = null, message = "导入失败：${e.message ?: "未知错误"}")
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // WebDAV 备份
+    // ------------------------------------------------------------------
+
+    /** 备份到 WebDAV：导出 JSON → 确保父目录存在 → PUT 到配置的完整地址 */
+    fun webDavBackup() {
+        val config = _uiState.value.webDavConfig
+        if (config.url.isBlank()) {
+            _uiState.update { it.copy(message = "请先填写 WebDAV 地址") }
+            return
+        }
+        if (_uiState.value.busy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, busyAction = "webdav_backup", message = null) }
+            try {
+                val json = withContext(Dispatchers.IO) { backupRepository.exportToJson() }
+                val directory = webDavDirectory(config.url)
+                withContext(Dispatchers.IO) {
+                    webDavClient.ensureCollection(directory, config.username, config.password)
+                }
+                withContext(Dispatchers.IO) {
+                    webDavClient.put(config.url, config.username, config.password, json)
+                }
+                _uiState.update { it.copy(busy = false, busyAction = null, message = "已备份") }
+            } catch (e: IOException) {
+                _uiState.update {
+                    it.copy(busy = false, busyAction = null, message = "WebDAV 操作失败：${e.message ?: "未知错误"}")
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(busy = false, busyAction = null, message = "WebDAV 操作失败：${e.message ?: "未知错误"}")
+                }
+            }
+        }
+    }
+
+    /** 从 WebDAV 恢复：GET → 导入；404（"远程文件不存在"）单独提示 */
+    fun webDavRestore() {
+        val config = _uiState.value.webDavConfig
+        if (config.url.isBlank()) {
+            _uiState.update { it.copy(message = "请先填写 WebDAV 地址") }
+            return
+        }
+        if (_uiState.value.busy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, busyAction = "webdav_restore", message = null) }
+            try {
+                val text = withContext(Dispatchers.IO) {
+                    webDavClient.get(config.url, config.username, config.password)
+                }
+                val count = withContext(Dispatchers.IO) { backupRepository.importFromJson(text) }
+                _uiState.update {
+                    it.copy(busy = false, busyAction = null, message = "恢复成功，新增 $count 题")
+                }
+            } catch (e: IOException) {
+                val message = if (e.message?.contains("远程文件不存在") == true) "远程文件不存在"
+                else "WebDAV 操作失败：${e.message ?: "未知错误"}"
+                _uiState.update { it.copy(busy = false, busyAction = null, message = message) }
+            } catch (e: IllegalArgumentException) {
+                _uiState.update { it.copy(busy = false, busyAction = null, message = "备份文件格式不正确") }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(busy = false, busyAction = null, message = "WebDAV 操作失败：${e.message ?: "未知错误"}")
+                }
+            }
+        }
+    }
+
+    /** UI 弹出 Toast 后消费掉 message，避免重复提示 */
+    fun consumeMessage() {
+        _uiState.update { it.copy(message = null) }
+    }
+
+    /**
+     * 从完整文件 URL 推导父目录（collection）地址：
+     * "https://host/dav/file.json" → "https://host/dav/"
+     * "https://host/dav" → "https://host/dav/"
+     */
+    private fun webDavDirectory(url: String): String {
+        val trimmed = url.trim().trimEnd('/')
+        val lastSlash = trimmed.lastIndexOf('/')
+        return if (lastSlash > "https://".length) trimmed.substring(0, lastSlash + 1) else "$trimmed/"
+    }
+}
